@@ -99,8 +99,9 @@ class AutoGDApp(tk.Tk):
         self.v_tmin      = tk.StringVar(value="18")
         self.v_tmax      = tk.StringVar(value="30")
         self.v_tprom     = tk.StringVar(value="28")
-        self.v_num_inv   = tk.IntVar(value=3)
-        self.v_ac_inv    = []          # se crean dinámicamente
+        self.v_num_inv      = tk.IntVar(value=3)
+        self.v_paneles_serie = tk.StringVar(value="24")
+        self.v_ac_inv       = []          # se crean dinámicamente
 
         # Rutas
         self.v_metrado   = tk.StringVar(value=r"C:\Users\JesúsAndrésBustilloO\Documents\GD\Proyectos\MARTINA 1 Y 2\MARTINA_1\04. Editables\03. Tablas de Cálculo\Calculo de metros cable MARTINA 1 - copia.xlsx")
@@ -162,6 +163,11 @@ class AutoGDApp(tk.Tk):
                           bg=BG3, fg=TEXT, buttonbackground=BG3, relief="flat", font=FONT,
                           command=self._actualizar_ac_inv)
         spin.grid(row=3, column=3, sticky="w", pady=4)
+
+        # Paneles en serie
+        lbl(grid, "Paneles en serie").grid(row=4, column=0, sticky="w", padx=(0,6), pady=4)
+        entry(grid, textvariable=self.v_paneles_serie, width=8).grid(
+            row=4, column=1, sticky="w", pady=4)
 
         grid.columnconfigure(1, weight=1)
         grid.columnconfigure(3, weight=1)
@@ -272,6 +278,12 @@ class AutoGDApp(tk.Tk):
                 float(var.get())
             except ValueError:
                 errores.append(f"{campo} no es un número válido.")
+        try:
+            v = int(self.v_paneles_serie.get())
+            if v <= 0:
+                raise ValueError
+        except ValueError:
+            errores.append("Paneles en serie debe ser un entero positivo.")
         for i, v in enumerate(self.v_ac_inv):
             try:
                 float(v.get())
@@ -304,14 +316,15 @@ class AutoGDApp(tk.Tk):
             # ── Construir objetos desde los campos ────────────────
             fecha = datetime.strptime(self.v_fecha.get().strip(), "%Y-%m-%d")
             proyecto = {
-                "nombre":       self.v_nombre.get().strip().upper(),
-                "ciudad":       self.v_ciudad.get().strip().upper(),
-                "departamento": self.v_depto.get().strip().upper(),
-                "fecha":        fecha,
-                "temp_min":     float(self.v_tmin.get()),
-                "temp_max":     float(self.v_tmax.get()),
-                "temp_prom":    float(self.v_tprom.get()),
-                "long_ac_inv":  [float(v.get()) for v in self.v_ac_inv],
+                "nombre":        self.v_nombre.get().strip().upper(),
+                "ciudad":        self.v_ciudad.get().strip().upper(),
+                "departamento":  self.v_depto.get().strip().upper(),
+                "fecha":         fecha,
+                "temp_min":      float(self.v_tmin.get()),
+                "temp_max":      float(self.v_tmax.get()),
+                "temp_prom":     float(self.v_tprom.get()),
+                "long_ac_inv":   [float(v.get()) for v in self.v_ac_inv],
+                "paneles_serie": int(self.v_paneles_serie.get()),
             }
 
             nombre_archivo = proyecto["nombre"].replace(" ", "_")
@@ -348,7 +361,8 @@ class AutoGDApp(tk.Tk):
 
             buf2 = io.StringIO()
             with contextlib.redirect_stdout(buf2):
-                cap_ejecutar(excel_salida, self.v_word_base.get(), word_salida, TABLA_MAP)
+                cap_ejecutar(excel_salida, self.v_word_base.get(), word_salida, TABLA_MAP,
+                             paneles_serie=proyecto["paneles_serie"])
             for line in buf2.getvalue().splitlines():
                 color = GREEN if "[OK]" in line else (RED if "[ERROR]" in line else None)
                 self._log("  " + line, color)

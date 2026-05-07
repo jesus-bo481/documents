@@ -135,9 +135,52 @@ def _pegar_antes_caption(wd, doc, caption_idx: int):
 
 
 # ─────────────────────────────────────────────────────────────────
+# TABLA 27 — NIVEL TENSIÓN DC CORREGIDO POR TEMPERATURA
+# ─────────────────────────────────────────────────────────────────
+def _fmt(valor: float) -> str:
+    """Formatea con 2 decimales y coma decimal (notación colombiana)."""
+    return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def actualizar_tabla27(doc, paneles: int, voc_tmin: float, vmpp_tmin: float):
+    """
+    Busca la tabla cuyo caption siguiente contiene 'nivel tensión DC' o 'tabla 27'
+    y actualiza la fila de datos con los valores calculados.
+    Columnas: [Paneles en serie | VOC Tmin [V] | Vmpp Tmin [V] | VOC total [V]]
+    """
+    anclas = ("nivel tensión dc", "nivel tension dc", "tabla 27")
+    voc_total = paneles * voc_tmin
+
+    for i in range(1, doc.Tables.Count + 1):
+        tbl = doc.Tables(i)
+        tbl_end = tbl.Range.End
+        # Leer hasta 300 caracteres después de la tabla para encontrar el caption
+        check_end = min(tbl_end + 300, doc.Content.End)
+        check_text = doc.Range(tbl_end, check_end).Text.strip().lower()
+
+        if any(a in check_text for a in anclas):
+            # Verificar que la tabla tenga al menos 2 filas y 4 columnas
+            if tbl.Rows.Count < 2 or tbl.Columns.Count < 4:
+                continue
+            try:
+                tbl.Cell(2, 1).Range.Text = str(paneles)
+                tbl.Cell(2, 2).Range.Text = _fmt(voc_tmin)
+                tbl.Cell(2, 3).Range.Text = _fmt(vmpp_tmin)
+                tbl.Cell(2, 4).Range.Text = _fmt(voc_total)
+                print(f"  [OK] Tabla 27 actualizada → paneles={paneles}, "
+                      f"VOC={_fmt(voc_tmin)}, Vmpp={_fmt(vmpp_tmin)}, VOCtotal={_fmt(voc_total)}")
+            except Exception as e:
+                print(f"  [ERROR Tabla 27] {e}")
+            return
+
+    print("  [ADVERTENCIA] Tabla 27 (Nivel tensión DC) no encontrada en el Word.")
+
+
+# ─────────────────────────────────────────────────────────────────
 # PROCESO PRINCIPAL
 # ─────────────────────────────────────────────────────────────────
-def ejecutar(excel_path: str, word_base: str, word_salida: str, tabla_map: list):
+def ejecutar(excel_path: str, word_base: str, word_salida: str, tabla_map: list,
+             paneles_serie: int = 24):
     Path(word_salida).parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(word_base, word_salida)
     print(f"Word base copiado a:\n  {word_salida}\n")
@@ -156,6 +199,13 @@ def ejecutar(excel_path: str, word_base: str, word_salida: str, tabla_map: list)
         wb  = xl.Workbooks.Open(os.path.abspath(excel_path))
         xl.Calculate()
         time.sleep(2)
+
+        # Leer valores calculados de la hoja MEMORIA
+        ws_mem   = wb.Worksheets("MEMORIA")
+        voc_tmin  = ws_mem.Range("E13").Value   # VOC ajustado por Tmin
+        vmpp_tmin = ws_mem.Range("E15").Value   # Vmpp ajustado por Tmin
+        print(f"MEMORIA E13 (VOC  Tmin) = {voc_tmin}")
+        print(f"MEMORIA E15 (Vmpp Tmin) = {vmpp_tmin}\n")
 
         doc = wd.Documents.Open(os.path.abspath(word_salida))
 
@@ -194,6 +244,10 @@ def ejecutar(excel_path: str, word_base: str, word_salida: str, tabla_map: list)
                 print(f"  OK: imagen pegada antes del caption")
             except Exception as e:
                 print(f"  [ERROR al pegar] {e}")
+
+        # ── Tabla 27: Nivel tensión DC corregido por temperatura ──
+        print("\n[tabla27]")
+        actualizar_tabla27(doc, paneles_serie, voc_tmin, vmpp_tmin)
 
         doc.Save()
         doc.Close()

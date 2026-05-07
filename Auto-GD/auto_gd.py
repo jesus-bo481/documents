@@ -21,7 +21,8 @@ PROYECTO = {
     # Longitudes de cable AC por inversor [m] (hoja MEMORIA, celdas AB24-AB26)
     # Tramo: salida del inversor → gabinete de protecciones SSFV
     # AB33 (totalizador → transformador) se deja como está en el Excel base
-    "long_ac_inv": [54, 40, 28],
+    "long_ac_inv":    [54, 40, 28],
+    "paneles_serie":  24,       # paneles en serie por string (col D de Arreglo mppts SM)
 }
 
 # Ruta al Excel de metrado (I1S1, I2S1, …)
@@ -196,6 +197,14 @@ def llenar_excel(metrado: dict, proyecto: dict, excel_base: str, excel_salida: s
             total_escritas += 1
 
         print(f"[Arreglo] Inversor {inv_num}: {min(len(strings_ordenados), len(filas))} strings escritos.")
+
+    # ── Paneles en serie → columna D de las filas activas ─────────
+    paneles_serie = proyecto.get("paneles_serie")
+    if paneles_serie is not None:
+        for inv_num, filas in mapa.items():
+            for row, col_j, col_k in filas:
+                ws_arr.cell(row, 4).value = int(paneles_serie)
+        print(f"[Arreglo] Paneles en serie escritos en col D: {int(paneles_serie)}")
 
     # ── Guardar ───────────────────────────────────────────────────
     wb.save(excel_salida)
