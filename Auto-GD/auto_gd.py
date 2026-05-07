@@ -204,10 +204,41 @@ def llenar_excel(metrado: dict, proyecto: dict, excel_base: str, excel_salida: s
 
 
 # ─────────────────────────────────────────────────────────────────
-# 5. MAIN
+# 5. MAPA DE TABLAS A CAPTURAR COMO IMAGEN
+#
+# Cada entrada define:
+#   "hoja"   : nombre de la hoja en el Excel
+#   "rango"  : celda_inicio:celda_fin  (cols B:M = sin Potencia AC ni Relación DC/AC)
+#   "tabla"  : identificador para nombrar la imagen y ubicarla en el Word
+#
+# La detección de rangos es automática (busca encabezados INVERSOR /
+# CÁLCULO y excluye la fila TOTAL de cada bloque).
+# ─────────────────────────────────────────────────────────────────
+TABLA_MAP = [
+    # ── Regulación DC (Arreglo mppts SM, cols B:M, sin fila TOTAL) ──
+    {"hoja": "Arreglo mppts SM", "rango": "B2:M32",   "tabla": "reg_dc_inv1"},
+    {"hoja": "Arreglo mppts SM", "rango": "B36:M66",  "tabla": "reg_dc_inv2"},
+    {"hoja": "Arreglo mppts SM", "rango": "B70:M100", "tabla": "reg_dc_inv3"},
+    # ── Pérdidas DC (Pérdidas DC, cols B:K) ─────────────────────────
+    # Columnas a confirmar por el usuario antes de activar
+    # {"hoja": "Pérdidas DC", "rango": "B2:K34",   "tabla": "perd_dc_inv1"},
+    # {"hoja": "Pérdidas DC", "rango": "B35:K67",  "tabla": "perd_dc_inv2"},
+    # {"hoja": "Pérdidas DC", "rango": "B68:K103", "tabla": "perd_dc_inv3"},
+    # ── Regulación AC y Pérdidas AC ─────────────────────────────────
+    # Columnas a confirmar por el usuario antes de activar
+    # {"hoja": "Regulación AC", "rango": "B2:M11", "tabla": "reg_ac"},
+    # {"hoja": "Pérdidas AC",   "rango": "B2:I10", "tabla": "perd_ac"},
+]
+
+
+# ─────────────────────────────────────────────────────────────────
+# 6. MAIN
 # ─────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=== Auto-GD — Fase 1: Llenar Excel de cálculo ===\n")
     metrado = leer_metrado(EXCEL_METRADO)
     print(f"Metrado cargado: {len(metrado)} strings\n")
     llenar_excel(metrado, PROYECTO, EXCEL_BASE, EXCEL_SALIDA)
+    print(f"\nTablas configuradas para captura (Fase 2): {len(TABLA_MAP)}")
+    for t in TABLA_MAP:
+        print(f"  [{t['tabla']}]  {t['hoja']}  {t['rango']}")
