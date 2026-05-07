@@ -8,12 +8,16 @@ Flujo por cada tabla:
 """
 
 import os
+import re
 import shutil
 import time
 import pythoncom
 from pathlib import Path
 
 import win32com.client as win32
+
+# Patrón de entrada de TOC: termina con tabulador + número(s) de página
+_TOC_RE = re.compile(r'\t\d+\s*\r?$')
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -53,14 +57,37 @@ TABLA_MAP = [
 # ─────────────────────────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────────────────────────
+def _es_toc(para) -> bool:
+    """
+    Devuelve True si el párrafo pertenece a la tabla de contenido.
+    Criterios:
+      1. El texto crudo termina con tabulador + número de página.
+      2. El nombre del estilo contiene 'TOC', 'toc', 'Tabla de contenido' o 'Índice'.
+    """
+    raw = para.Range.Text
+    if _TOC_RE.search(raw):
+        return True
+    try:
+        sn = para.Style.NameLocal.lower()
+        if any(tok in sn for tok in ('toc', 'tabla de contenido', 'índice', 'indice')):
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def _buscar_caption(doc, ancla: str) -> int | None:
     """
-    Devuelve el índice (1-based) del primer párrafo cuyo texto contiene
-    'ancla' (insensible a mayúsculas).  None si no se encuentra.
+    Devuelve el índice (1-based) del primer párrafo del CUERPO del documento
+    cuyo texto contiene 'ancla' (insensible a mayúsculas).
+    Excluye entradas del índice/TOC aunque contengan el mismo texto.
     """
     ancla_low = ancla.lower()
     for i in range(1, doc.Paragraphs.Count + 1):
-        if ancla_low in doc.Paragraphs(i).Range.Text.strip().lower():
+        para = doc.Paragraphs(i)
+        if _es_toc(para):
+            continue
+        if ancla_low in para.Range.Text.strip().lower():
             return i
     return None
 
