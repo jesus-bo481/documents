@@ -1,6 +1,10 @@
-# Ignorar todo por defecto
+﻿# Ignorar todo por defecto
 *
 
-# Excepciones: archivos rastreados explícitamente
+# Excepciones: archivos rastreados explicitamente
 !.gitignore
 !README.md
+!Auto-GD/
+!Auto-GD/**
+!Auto-GD/output/
+Auto-GD/output/**
