@@ -45,9 +45,9 @@ TABLA_MAP = [
     {"hoja": "Arreglo mppts SM", "rango": "B36:M66",  "tabla": "reg_dc_inv2", "ancla_word": "regulación DC inversor 2"},
     {"hoja": "Arreglo mppts SM", "rango": "B70:M100", "tabla": "reg_dc_inv3", "ancla_word": "regulación DC inversor 3"},
     # Pérdidas DC — cols B:K
-    {"hoja": "Pérdidas DC", "rango": "B2:K34",   "tabla": "perd_dc_inv1", "ancla_word": "pérdidas DC inversor 1"},
-    {"hoja": "Pérdidas DC", "rango": "B35:K67",  "tabla": "perd_dc_inv2", "ancla_word": "pérdidas DC inversor 2"},
-    {"hoja": "Pérdidas DC", "rango": "B68:K103", "tabla": "perd_dc_inv3", "ancla_word": "pérdidas DC inversor 3"},
+    {"hoja": "Pérdidas DC", "rango": "B2:K32",  "tabla": "perd_dc_inv1", "ancla_word": "pérdidas DC inversor 1"},
+    {"hoja": "Pérdidas DC", "rango": "B35:K65", "tabla": "perd_dc_inv2", "ancla_word": "pérdidas DC inversor 2"},
+    {"hoja": "Pérdidas DC", "rango": "B68:K98", "tabla": "perd_dc_inv3", "ancla_word": "pérdidas DC inversor 3"},
     # AC
     {"hoja": "Regulación AC", "rango": "B2:M11", "tabla": "reg_ac",   "ancla_word": "regulación AC"},
     {"hoja": "Pérdidas AC",   "rango": "B2:I10", "tabla": "perd_ac",  "ancla_word": "pérdidas de energía AC"},

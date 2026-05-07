@@ -238,19 +238,19 @@ TABLA_MAP = [
     # ── Pérdidas DC ── cols B:K ──────────────────────────────────────
     {
         "hoja":       "Pérdidas DC",
-        "rango":      "B2:K34",
+        "rango":      "B2:K32",
         "tabla":      "perd_dc_inv1",
         "ancla_word": "pérdidas DC inversor 1",
     },
     {
         "hoja":       "Pérdidas DC",
-        "rango":      "B35:K67",
+        "rango":      "B35:K65",
         "tabla":      "perd_dc_inv2",
         "ancla_word": "pérdidas DC inversor 2",
     },
     {
         "hoja":       "Pérdidas DC",
-        "rango":      "B68:K103",
+        "rango":      "B68:K98",
         "tabla":      "perd_dc_inv3",
         "ancla_word": "pérdidas DC inversor 3",
     },
