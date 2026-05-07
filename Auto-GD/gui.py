@@ -207,7 +207,7 @@ class AutoGDApp(tk.Tk):
             frm, _ = _entry(t_row, var, width=6)
             frm.pack(side="left", padx=(0, 4))
 
-        # Paneles / inversores
+        # Fila 2: Paneles en serie | Total de módulos | Número de inversores
         p_frame = tk.Frame(g, bg=SURF)
         p_frame.grid(row=2, column=0, sticky="ew", padx=4, pady=4)
         _label(p_frame, "Paneles en serie", muted=True).pack(anchor="w")
@@ -221,7 +221,7 @@ class AutoGDApp(tk.Tk):
         frm.pack(anchor="w", pady=(2, 0))
 
         n_frame = tk.Frame(g, bg=SURF)
-        n_frame.grid(row=2, column=1, sticky="ew", padx=4, pady=4)
+        n_frame.grid(row=2, column=2, sticky="ew", padx=4, pady=4)
         _label(n_frame, "Número de inversores", muted=True).pack(anchor="w")
         spin_row = tk.Frame(n_frame, bg=SURF)
         spin_row.pack(anchor="w", pady=(2, 0))
