@@ -20,9 +20,8 @@ PROYECTO = {
     "temp_prom":    28,
     # Longitudes de cable AC por inversor [m] (hoja MEMORIA, celdas AB24-AB26)
     # Tramo: salida del inversor → gabinete de protecciones SSFV
+    # AB33 (totalizador → transformador) se deja como está en el Excel base
     "long_ac_inv": [54, 40, 28],
-    # Longitud cable AC totalizador → transformador [m] (celda AB33)
-    "long_ac_total": 15,
 }
 
 # Ruta al Excel de metrado (I1S1, I2S1, …)
@@ -151,19 +150,15 @@ def llenar_excel(metrado: dict, proyecto: dict, excel_base: str, excel_salida: s
     ws_mem["E11"] = proyecto["temp_max"]
 
     # Longitudes cable AC por inversor (AB24, AB25, AB26, …)
-    # y totalizador → transformador (AB33)
+    # AB33 (totalizador → transformador) se deja como está en el Excel base
     celdas_ac_inv = ["AB24", "AB25", "AB26", "AB27", "AB28"]
     for i, long_ac in enumerate(proyecto.get("long_ac_inv", [])):
         if i >= len(celdas_ac_inv):
             break
         ws_mem[celdas_ac_inv[i]] = long_ac
 
-    if proyecto.get("long_ac_total") is not None:
-        ws_mem["AB33"] = proyecto["long_ac_total"]
-
     print(f"[MEMORIA] Datos del proyecto escritos.")
     print(f"[MEMORIA] Longitudes AC inversores: {proyecto.get('long_ac_inv', [])}")
-    print(f"[MEMORIA] Longitud AC totalizador: {proyecto.get('long_ac_total', '-')}")
 
     # ── Hoja Arreglo mppts SM: longitudes de cable por string ─────
     ws_arr = wb["Arreglo mppts SM"]
