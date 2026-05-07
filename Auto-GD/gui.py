@@ -362,7 +362,8 @@ class AutoGDApp(tk.Tk):
             buf2 = io.StringIO()
             with contextlib.redirect_stdout(buf2):
                 cap_ejecutar(excel_salida, self.v_word_base.get(), word_salida, TABLA_MAP,
-                             paneles_serie=proyecto["paneles_serie"])
+                             paneles_serie=proyecto["paneles_serie"],
+                             proyecto_info=proyecto)
             for line in buf2.getvalue().splitlines():
                 color = GREEN if "[OK]" in line else (RED if "[ERROR]" in line else None)
                 self._log("  " + line, color)

@@ -19,6 +19,14 @@ import win32com.client as win32
 # Patrón de entrada de TOC: termina con tabulador + número(s) de página
 _TOC_RE = re.compile(r'\t\d+\s*\r?$')
 
+# ─────────────────────────────────────────────────────────────────
+# Valores actualmente en la plantilla Word base (MARTINA 1).
+# Son los textos que se buscan y se reemplazan con los del proyecto.
+# ─────────────────────────────────────────────────────────────────
+PLANTILLA_NOMBRE   = "LA MARTINA 1"
+PLANTILLA_UBICACION = "Paratebueno, Cundinamarca"   # Ciudad, Departamento (title case)
+PLANTILLA_FECHA    = "31/03/2026"                   # DD/MM/YYYY
+
 
 # ─────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN — ajustar por proyecto
@@ -135,6 +143,58 @@ def _pegar_antes_caption(wd, doc, caption_idx: int):
 
 
 # ─────────────────────────────────────────────────────────────────
+# REEMPLAZAR DATOS DEL PROYECTO EN EL WORD
+# ─────────────────────────────────────────────────────────────────
+def _word_replace(doc, buscar: str, reemplazar: str, match_case: bool = True):
+    """Find-and-replace en todo el documento (párrafos + tablas + encabezados)."""
+    wdReplaceAll = 2
+    find = doc.Content.Find
+    find.ClearFormatting()
+    find.Replacement.ClearFormatting()
+    find.Text = buscar
+    find.Replacement.Text = reemplazar
+    find.MatchCase = match_case
+    find.MatchWholeWord = False
+    find.MatchWildcards = False
+    count = find.Execute(Replace=wdReplaceAll)
+    return count
+
+
+def reemplazar_datos_proyecto(doc, proyecto: dict):
+    """
+    Sustituye en todo el Word el nombre, la ubicación y la fecha
+    que vienen de la plantilla base por los valores del proyecto actual.
+
+    Formatos en la plantilla:
+      Nombre    → «LA MARTINA 1»              (mayúsculas)
+      Ubicación → «Paratebueno, Cundinamarca» (title case, coma)
+      Fecha     → «31/03/2026»                (DD/MM/YYYY)
+    """
+    nombre  = proyecto["nombre"].upper()
+    ciudad  = proyecto["ciudad"].title()
+    depto   = proyecto["departamento"].title()
+    fecha   = proyecto["fecha"]
+
+    ubicacion_nueva = f"{ciudad}, {depto}"
+    fecha_nueva     = fecha.strftime("%d/%m/%Y")
+
+    reemplazos = [
+        (PLANTILLA_NOMBRE,    nombre,          True),
+        (PLANTILLA_UBICACION, ubicacion_nueva, True),
+        # También en mayúsculas por si aparece así en alguna parte
+        (PLANTILLA_UBICACION.upper(), ubicacion_nueva.upper(), True),
+        (PLANTILLA_FECHA,     fecha_nueva,     True),
+    ]
+
+    print("  Reemplazando datos del proyecto en el Word:")
+    for buscar, nuevo, mc in reemplazos:
+        if buscar == nuevo:
+            continue                          # nada que cambiar
+        _word_replace(doc, buscar, nuevo, mc)
+        print(f"    «{buscar}» → «{nuevo}»")
+
+
+# ─────────────────────────────────────────────────────────────────
 # TABLA 27 — NIVEL TENSIÓN DC CORREGIDO POR TEMPERATURA
 # ─────────────────────────────────────────────────────────────────
 def _fmt(valor: float) -> str:
@@ -180,7 +240,7 @@ def actualizar_tabla27(doc, paneles: int, voc_tmin: float, vmpp_tmin: float):
 # PROCESO PRINCIPAL
 # ─────────────────────────────────────────────────────────────────
 def ejecutar(excel_path: str, word_base: str, word_salida: str, tabla_map: list,
-             paneles_serie: int = 24):
+             paneles_serie: int = 24, proyecto_info: dict = None):
     Path(word_salida).parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(word_base, word_salida)
     print(f"Word base copiado a:\n  {word_salida}\n")
@@ -208,6 +268,12 @@ def ejecutar(excel_path: str, word_base: str, word_salida: str, tabla_map: list,
         print(f"MEMORIA E15 (Vmpp Tmin) = {vmpp_tmin}\n")
 
         doc = wd.Documents.Open(os.path.abspath(word_salida))
+
+        # ── Reemplazar nombre, ubicación y fecha del proyecto ─────
+        if proyecto_info:
+            print(">> Reemplazando datos del proyecto…")
+            reemplazar_datos_proyecto(doc, proyecto_info)
+            print()
 
         for entrada in tabla_map:
             hoja      = entrada["hoja"]

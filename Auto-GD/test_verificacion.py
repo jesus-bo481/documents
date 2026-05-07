@@ -25,7 +25,8 @@ llenar_excel(metrado_test, proyecto_test, EXCEL_BASE, EXCEL_SALIDA)
 # ── Fase 2+3: capturar e insertar en Word ────────────────────────
 print("\n=== Fase 2+3: capturando tablas e insertando en Word ===\n")
 ejecutar(EXCEL_SALIDA, WORD_BASE, WORD_SALIDA, TABLA_MAP,
-         paneles_serie=proyecto_test["paneles_serie"])
+         paneles_serie=proyecto_test["paneles_serie"],
+         proyecto_info=proyecto_test)
 
 print("\n=== Verificacion completada ===")
 print(f"Abre el Word y confirma que las tablas muestran 1 en todas las longitudes:")
