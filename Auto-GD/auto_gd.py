@@ -207,27 +207,66 @@ def llenar_excel(metrado: dict, proyecto: dict, excel_base: str, excel_salida: s
 # 5. MAPA DE TABLAS A CAPTURAR COMO IMAGEN
 #
 # Cada entrada define:
-#   "hoja"   : nombre de la hoja en el Excel
-#   "rango"  : celda_inicio:celda_fin  (cols B:M = sin Potencia AC ni Relación DC/AC)
-#   "tabla"  : identificador para nombrar la imagen y ubicarla en el Word
-#
-# La detección de rangos es automática (busca encabezados INVERSOR /
-# CÁLCULO y excluye la fila TOTAL de cada bloque).
+#   "hoja"        : nombre de la hoja en el Excel de cálculo
+#   "rango"       : celda_inicio:celda_fin a capturar como imagen
+#   "tabla"       : identificador interno
+#   "ancla_word"  : texto parcial del caption en el Word donde se
+#                   inserta la imagen JUSTO ANTES del caption.
+#                   Se busca por título conceptual (no por número)
+#                   para que funcione en cualquier operador de red.
 # ─────────────────────────────────────────────────────────────────
 TABLA_MAP = [
-    # ── Regulación DC (Arreglo mppts SM, cols B:M, sin fila TOTAL) ──
-    {"hoja": "Arreglo mppts SM", "rango": "B2:M32",   "tabla": "reg_dc_inv1"},
-    {"hoja": "Arreglo mppts SM", "rango": "B36:M66",  "tabla": "reg_dc_inv2"},
-    {"hoja": "Arreglo mppts SM", "rango": "B70:M100", "tabla": "reg_dc_inv3"},
-    # ── Pérdidas DC (Pérdidas DC, cols B:K) ─────────────────────────
-    # Columnas a confirmar por el usuario antes de activar
-    # {"hoja": "Pérdidas DC", "rango": "B2:K34",   "tabla": "perd_dc_inv1"},
-    # {"hoja": "Pérdidas DC", "rango": "B35:K67",  "tabla": "perd_dc_inv2"},
-    # {"hoja": "Pérdidas DC", "rango": "B68:K103", "tabla": "perd_dc_inv3"},
-    # ── Regulación AC y Pérdidas AC ─────────────────────────────────
-    # Columnas a confirmar por el usuario antes de activar
-    # {"hoja": "Regulación AC", "rango": "B2:M11", "tabla": "reg_ac"},
-    # {"hoja": "Pérdidas AC",   "rango": "B2:I10", "tabla": "perd_ac"},
+    # ── Regulación DC ── cols B:M, sin fila TOTAL ───────────────────
+    {
+        "hoja":       "Arreglo mppts SM",
+        "rango":      "B2:M32",
+        "tabla":      "reg_dc_inv1",
+        "ancla_word": "regulación DC inversor 1",
+    },
+    {
+        "hoja":       "Arreglo mppts SM",
+        "rango":      "B36:M66",
+        "tabla":      "reg_dc_inv2",
+        "ancla_word": "regulación DC inversor 2",
+    },
+    {
+        "hoja":       "Arreglo mppts SM",
+        "rango":      "B70:M100",
+        "tabla":      "reg_dc_inv3",
+        "ancla_word": "regulación DC inversor 3",
+    },
+    # ── Pérdidas DC ── cols B:K ──────────────────────────────────────
+    {
+        "hoja":       "Pérdidas DC",
+        "rango":      "B2:K34",
+        "tabla":      "perd_dc_inv1",
+        "ancla_word": "pérdidas DC inversor 1",
+    },
+    {
+        "hoja":       "Pérdidas DC",
+        "rango":      "B35:K67",
+        "tabla":      "perd_dc_inv2",
+        "ancla_word": "pérdidas DC inversor 2",
+    },
+    {
+        "hoja":       "Pérdidas DC",
+        "rango":      "B68:K103",
+        "tabla":      "perd_dc_inv3",
+        "ancla_word": "pérdidas DC inversor 3",
+    },
+    # ── AC ───────────────────────────────────────────────────────────
+    {
+        "hoja":       "Regulación AC",
+        "rango":      "B2:M11",
+        "tabla":      "reg_ac",
+        "ancla_word": "regulación AC",
+    },
+    {
+        "hoja":       "Pérdidas AC",
+        "rango":      "B2:I10",
+        "tabla":      "perd_ac",
+        "ancla_word": "pérdidas de energía AC",
+    },
 ]
 
 
