@@ -129,6 +129,7 @@ class AutoGDApp(tk.Tk):
         self.v_tmax      = tk.StringVar(value="30")
         self.v_tprom     = tk.StringVar(value="28")
         self.v_paneles   = tk.StringVar(value="24")
+        self.v_modulos   = tk.StringVar(value="1728")
         self.v_num_inv   = tk.IntVar(value=3)
         self.v_ac_inv    = []
 
@@ -211,6 +212,12 @@ class AutoGDApp(tk.Tk):
         p_frame.grid(row=2, column=0, sticky="ew", padx=4, pady=4)
         _label(p_frame, "Paneles en serie", muted=True).pack(anchor="w")
         frm, _ = _entry(p_frame, self.v_paneles, width=8)
+        frm.pack(anchor="w", pady=(2, 0))
+
+        m_frame = tk.Frame(g, bg=SURF)
+        m_frame.grid(row=2, column=1, sticky="ew", padx=4, pady=4)
+        _label(m_frame, "Total de módulos", muted=True).pack(anchor="w")
+        frm, _ = _entry(m_frame, self.v_modulos, width=10)
         frm.pack(anchor="w", pady=(2, 0))
 
         n_frame = tk.Frame(g, bg=SURF)
@@ -347,6 +354,11 @@ class AutoGDApp(tk.Tk):
             if v <= 0: raise ValueError
         except ValueError:
             err.append("Paneles en serie debe ser entero positivo.")
+        try:
+            v = int(self.v_modulos.get())
+            if v <= 0: raise ValueError
+        except ValueError:
+            err.append("Total de módulos debe ser entero positivo.")
         for i, v in enumerate(self.v_ac_inv):
             try:
                 float(v.get())
@@ -387,6 +399,7 @@ class AutoGDApp(tk.Tk):
                 "temp_prom":     float(self.v_tprom.get()),
                 "long_ac_inv":   [float(v.get()) for v in self.v_ac_inv],
                 "paneles_serie": int(self.v_paneles.get()),
+                "modulos":       int(self.v_modulos.get()),
             }
 
             slug       = proyecto["nombre"].replace(" ", "_")

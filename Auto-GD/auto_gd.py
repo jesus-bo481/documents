@@ -23,6 +23,7 @@ PROYECTO = {
     # AB33 (totalizador → transformador) se deja como está en el Excel base
     "long_ac_inv":    [54, 40, 28],
     "paneles_serie":  24,       # paneles en serie por string (col D de Arreglo mppts SM)
+    "modulos":        1728,     # total de módulos del proyecto
 }
 
 # Ruta al Excel de metrado (I1S1, I2S1, …)

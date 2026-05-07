@@ -23,9 +23,10 @@ _TOC_RE = re.compile(r'\t\d+\s*\r?$')
 # Valores actualmente en la plantilla Word base (MARTINA 1).
 # Son los textos que se buscan y se reemplazan con los del proyecto.
 # ─────────────────────────────────────────────────────────────────
-PLANTILLA_NOMBRE   = "LA MARTINA 1"
-PLANTILLA_UBICACION = "Paratebueno, Cundinamarca"   # Ciudad, Departamento (title case)
-PLANTILLA_FECHA    = "31/03/2026"                   # DD/MM/YYYY
+PLANTILLA_NOMBRE    = "LA MARTINA 1"
+PLANTILLA_UBICACION = "Paratebueno, Cundinamarca"  # Ciudad, Departamento (title case)
+PLANTILLA_FECHA     = "31/03/2026"                 # DD/MM/YYYY
+PLANTILLA_MODULOS   = "1728"                       # número de módulos en la plantilla
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -143,55 +144,124 @@ def _pegar_antes_caption(wd, doc, caption_idx: int):
 
 
 # ─────────────────────────────────────────────────────────────────
-# REEMPLAZAR DATOS DEL PROYECTO EN EL WORD
+# REEMPLAZAR DATOS DEL PROYECTO EN EL WORD (via python-docx)
+# Funciona aunque el texto esté partido entre varios runs XML.
 # ─────────────────────────────────────────────────────────────────
-def _word_replace(doc, buscar: str, reemplazar: str, match_case: bool = True):
-    """Find-and-replace en todo el documento (párrafos + tablas + encabezados)."""
-    wdReplaceAll = 2
-    find = doc.Content.Find
-    find.ClearFormatting()
-    find.Replacement.ClearFormatting()
-    find.Text = buscar
-    find.Replacement.Text = reemplazar
-    find.MatchCase = match_case
-    find.MatchWholeWord = False
-    find.MatchWildcards = False
-    count = find.Execute(Replace=wdReplaceAll)
+def _replace_in_para(para, old: str, new: str) -> int:
+    """
+    Reemplaza `old` por `new` en un párrafo aunque el texto esté
+    dividido en varios runs.  Preserva el formato de cada run.
+    Devuelve el número de ocurrencias reemplazadas.
+    """
+    run_texts = [r.text for r in para.runs]
+    full = "".join(run_texts)
+    if old not in full:
+        return 0
+
+    count = 0
+    search_from = 0
+
+    while True:
+        pos = full.find(old, search_from)
+        if pos == -1:
+            break
+
+        end = pos + len(old)
+        count += 1
+
+        # Construir mapa carácter → índice de run
+        run_of = []
+        for ri, t in enumerate(run_texts):
+            run_of.extend([ri] * len(t))
+
+        r_first = run_of[pos]
+        r_last  = run_of[end - 1]
+
+        # Offset dentro del primer run donde empieza la coincidencia
+        chars_before_first = sum(len(run_texts[i]) for i in range(r_first))
+        off_first = pos - chars_before_first
+
+        # Offset dentro del último run donde termina la coincidencia
+        chars_before_last = sum(len(run_texts[i]) for i in range(r_last))
+        off_last = end - chars_before_last   # exclusivo
+
+        if r_first == r_last:
+            # Todo en un solo run → reemplazo directo
+            run_texts[r_first] = (run_texts[r_first][:off_first]
+                                  + new
+                                  + run_texts[r_first][off_last:])
+        else:
+            # Primer run: conservar lo anterior + añadir el nuevo texto
+            run_texts[r_first] = run_texts[r_first][:off_first] + new
+            # Runs intermedios: vaciar
+            for ri in range(r_first + 1, r_last):
+                run_texts[ri] = ""
+            # Último run: descartar la parte que era del texto buscado
+            run_texts[r_last] = run_texts[r_last][off_last:]
+
+        # Aplicar al documento
+        for ri, r in enumerate(para.runs):
+            r.text = run_texts[ri]
+
+        # Recalcular full para la siguiente iteración
+        full = "".join(run_texts)
+        search_from = pos + len(new)
+
     return count
 
 
-def reemplazar_datos_proyecto(doc, proyecto: dict):
-    """
-    Sustituye en todo el Word el nombre, la ubicación y la fecha
-    que vienen de la plantilla base por los valores del proyecto actual.
+def _replace_docx(doc_obj, old: str, new: str) -> int:
+    """Reemplaza en todos los párrafos y celdas del documento."""
+    from docx.oxml.ns import qn
+    total = 0
 
-    Formatos en la plantilla:
-      Nombre    → «LA MARTINA 1»              (mayúsculas)
-      Ubicación → «Paratebueno, Cundinamarca» (title case, coma)
-      Fecha     → «31/03/2026»                (DD/MM/YYYY)
-    """
-    nombre  = proyecto["nombre"].upper()
-    ciudad  = proyecto["ciudad"].title()
-    depto   = proyecto["departamento"].title()
-    fecha   = proyecto["fecha"]
+    # Párrafos del cuerpo
+    for para in doc_obj.paragraphs:
+        total += _replace_in_para(para, old, new)
 
-    ubicacion_nueva = f"{ciudad}, {depto}"
-    fecha_nueva     = fecha.strftime("%d/%m/%Y")
+    # Celdas de todas las tablas
+    for table in doc_obj.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    total += _replace_in_para(para, old, new)
+
+    return total
+
+
+def reemplazar_datos_proyecto(word_path: str, proyecto: dict):
+    """
+    Abre el Word con python-docx, aplica todos los reemplazos
+    run-a-run y guarda.  Se llama ANTES de abrir con Word COM.
+    """
+    from docx import Document
+
+    doc = Document(word_path)
+
+    nombre    = proyecto["nombre"].upper()
+    ciudad    = proyecto["ciudad"].title()
+    depto     = proyecto["departamento"].title()
+    ubicacion = f"{ciudad}, {depto}"
+    fecha_str = proyecto["fecha"].strftime("%d/%m/%Y")
+    modulos   = str(int(proyecto.get("modulos", int(PLANTILLA_MODULOS))))
 
     reemplazos = [
-        (PLANTILLA_NOMBRE,    nombre,          True),
-        (PLANTILLA_UBICACION, ubicacion_nueva, True),
-        # También en mayúsculas por si aparece así en alguna parte
-        (PLANTILLA_UBICACION.upper(), ubicacion_nueva.upper(), True),
-        (PLANTILLA_FECHA,     fecha_nueva,     True),
+        (PLANTILLA_NOMBRE,            nombre),
+        (PLANTILLA_UBICACION,         ubicacion),
+        (PLANTILLA_UBICACION.upper(), ubicacion.upper()),
+        (PLANTILLA_FECHA,             fecha_str),
+        (PLANTILLA_MODULOS,           modulos),
     ]
 
     print("  Reemplazando datos del proyecto en el Word:")
-    for buscar, nuevo, mc in reemplazos:
-        if buscar == nuevo:
-            continue                          # nada que cambiar
-        _word_replace(doc, buscar, nuevo, mc)
-        print(f"    «{buscar}» → «{nuevo}»")
+    for old, new in reemplazos:
+        if old == new:
+            continue
+        n = _replace_docx(doc, old, new)
+        print(f"    «{old}» → «{new}»  ({n} ocurrencia(s))")
+
+    doc.save(word_path)
+    print("  Guardado.")
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -245,6 +315,12 @@ def ejecutar(excel_path: str, word_base: str, word_salida: str, tabla_map: list,
     shutil.copy2(word_base, word_salida)
     print(f"Word base copiado a:\n  {word_salida}\n")
 
+    # ── Reemplazos de texto con python-docx (antes de abrir con COM) ─
+    if proyecto_info:
+        print(">> Reemplazando datos del proyecto…")
+        reemplazar_datos_proyecto(word_salida, proyecto_info)
+        print()
+
     pythoncom.CoInitialize()
 
     xl = win32.Dispatch("Excel.Application")
@@ -268,12 +344,6 @@ def ejecutar(excel_path: str, word_base: str, word_salida: str, tabla_map: list,
         print(f"MEMORIA E15 (Vmpp Tmin) = {vmpp_tmin}\n")
 
         doc = wd.Documents.Open(os.path.abspath(word_salida))
-
-        # ── Reemplazar nombre, ubicación y fecha del proyecto ─────
-        if proyecto_info:
-            print(">> Reemplazando datos del proyecto…")
-            reemplazar_datos_proyecto(doc, proyecto_info)
-            print()
 
         for entrada in tabla_map:
             hoja      = entrada["hoja"]

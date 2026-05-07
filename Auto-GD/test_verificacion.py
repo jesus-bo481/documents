@@ -16,6 +16,7 @@ print(f"Strings en metrado: {len(metrado_test)} → todos con longitud pos=1, ne
 proyecto_test = dict(PROYECTO)
 proyecto_test["long_ac_inv"]   = [1, 1, 1]
 proyecto_test["paneles_serie"] = 1
+proyecto_test["modulos"]       = 99
 print(f"Longitudes AC inversores: {proyecto_test['long_ac_inv']}")
 print(f"Paneles en serie: {proyecto_test['paneles_serie']}\n")
 
