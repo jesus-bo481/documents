@@ -1,0 +1,6 @@
+# Ignorar todo por defecto
+*
+
+# Excepciones: archivos rastreados explícitamente
+!.gitignore
+!README.md
