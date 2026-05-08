@@ -1,0 +1,27 @@
+{
+  "panels": [
+    {
+      "model": "GENERICO_580W",
+      "width_m": 1.134,
+      "height_m": 2.278,
+      "voc": 49.5,
+      "vmp": 41.5,
+      "isc": 14.6,
+      "imp": 13.98,
+      "power_wp": 580
+    },
+    {
+      "model": "GENERICO_550W",
+      "width_m": 1.096,
+      "height_m": 2.278,
+      "voc": 49.2,
+      "vmp": 41.2,
+      "isc": 13.97,
+      "imp": 13.35,
+      "power_wp": 550
+    }
+  ],
+  "default_gap_horizontal_m": 0.5,
+  "default_gap_vertical_m": 2.5,
+  "default_group_separation_m": 6.0
+}

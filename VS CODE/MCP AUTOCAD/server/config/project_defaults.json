@@ -1,0 +1,26 @@
+{
+  "layers": {
+    "boundary": "LIMITE_PREDIO",
+    "obstacles": "OBSTACULOS",
+    "panels_prefix": "GD",
+    "strings_dc": "STRINGS_DC",
+    "corridors": "CORREDORES_DC",
+    "labels": "STRINGS_TEXTOS",
+    "dimensions": "COTAS"
+  },
+  "colors": {
+    "positive_cable": 1,
+    "negative_cable": 5,
+    "corridor": 3,
+    "boundary": 4
+  },
+  "nomenclature": {
+    "inversor_prefix": "I",
+    "mppt_prefix": "M",
+    "string_prefix": "S",
+    "example": "I1M2S3 = Inversor 1, MPPT 2, String 3"
+  },
+  "corridor_offset_y_m": 3.0,
+  "cable_slack_pct": 0.10,
+  "autocad_lt_compatible": true
+}

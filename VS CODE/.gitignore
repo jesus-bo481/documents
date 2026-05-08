@@ -1,0 +1,20 @@
+﻿# Ignorar todo por defecto
+*
+
+# Excepciones: archivos rastreados explicitamente
+!.gitignore
+!README.md
+!Auto-GD/
+!Auto-GD/**
+!Auto-GD/output/
+Auto-GD/output/**
+
+!MCP AUTOCAD/
+!MCP AUTOCAD/**
+# Ignorar entornos virtuales, cache y DXF binarios grandes
+MCP AUTOCAD/.venv/
+MCP AUTOCAD/**/__pycache__/
+MCP AUTOCAD/**/*.pyc
+MCP AUTOCAD/output/**
+MCP AUTOCAD/*.DXF
+MCP AUTOCAD/*.dxf

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "mcp-autocad": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "server/mcp_autocad_server.py"
+      ],
+      "cwd": "c:\\Users\\JesúsAndrésBustilloO\\Documents\\VS CODE\\MCP AUTOCAD"
+    }
+  }
+}
