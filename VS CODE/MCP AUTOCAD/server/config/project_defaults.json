@@ -1,4 +1,14 @@
 {
+  "_comment": "Valores por defecto del motor de layout. Tomados de solar_array_layout_v1.15.lsp",
+
+  "spacing": {
+    "module_gap_m": 0.04,
+    "mesa_gap_horizontal_m": 0.5,
+    "mesa_gap_vertical_m": 2.5,
+    "gd_gap_rows_m": 6.0,
+    "gd_gap_columns_m": 8.0
+  },
+
   "layers": {
     "boundary": "LIMITE_PREDIO",
     "obstacles": "OBSTACULOS",
@@ -8,19 +18,29 @@
     "labels": "STRINGS_TEXTOS",
     "dimensions": "COTAS"
   },
+
   "colors": {
     "positive_cable": 1,
     "negative_cable": 5,
     "corridor": 3,
     "boundary": 4
   },
+
   "nomenclature": {
     "inversor_prefix": "I",
     "mppt_prefix": "M",
     "string_prefix": "S",
     "example": "I1M2S3 = Inversor 1, MPPT 2, String 3"
   },
+
   "corridor_offset_y_m": 3.0,
   "cable_slack_pct": 0.10,
-  "autocad_lt_compatible": true
+  "autocad_lt_compatible": true,
+
+  "_workflow_note": [
+    "1. analyze_dxf -> obtener puntos del poligono rojo y nombre del bloque",
+    "2. calculate_layout -> calcular posiciones de mesas (devuelve placements[])",
+    "3. generate_layout_lisp -> generar .lsp con los INSERTs",
+    "4. Cargar el .lsp en AutoCAD LT con: (load \"ruta/archivo.lsp\")"
+  ]
 }

@@ -1,0 +1,30 @@
+{
+  "_comment": "Layout hibrido Colibri — 26x2 primaria + 13x2 complemento hasta 1872 paneles",
+  "project_name": "COLIBRI",
+  "source_dxf": "C:/Users/JesúsAndrésBustilloO/Documents/Colibri DXF Claude.dxf",
+  "output_dxf": "output/COLIBRI.dxf",
+  "block_name": "PANEL_615",
+
+  "boundary_by": "layer",
+  "boundary_layer": "Cerramiento",
+  "boundary_select": "largest",
+
+  "panels_wide": 26,
+  "panels_high": 2,
+  "module_gap_m": 0.04,
+  "gap_horizontal_m": 0.5,
+  "gap_vertical_m": 2.5,
+  "num_groups": 1,
+  "panels_per_group": 0,
+  "group_sep_m": 6.0,
+  "layout_mode": "rows",
+  "fill_top_to_bottom": true,
+  "layer_prefix": "COLIBRI",
+
+  "hybrid": {
+    "enabled": true,
+    "fallback_wide": 13,
+    "fallback_high": 2,
+    "target_panels": 1872
+  }
+}

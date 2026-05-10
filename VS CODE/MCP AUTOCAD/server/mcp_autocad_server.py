@@ -5,7 +5,8 @@ Protocolo: MCP sobre stdio (compatible con Claude Code CLI y VS Code extension)
 Tools expuestos:
   - analyze_dxf          : Lee y resume un archivo DXF
   - calculate_layout     : Calcula posiciones de mesas (motor Python)
-  - generate_layout_lisp : Genera .lsp listo para cargar en AutoCAD LT
+  - generate_dxf         : Genera DXF con paneles implantados (desde JSON de proyecto o params)
+  - generate_layout_lisp : Genera .lsp listo para cargar en AutoCAD LT (legado)
   - generate_labels_lisp : Genera .lsp con etiquetas IxMyS z
   - calculate_metrado    : Estima longitudes de cable DC por string
   - build_nomenclature   : Genera lista de tags para el proyecto
@@ -41,6 +42,7 @@ from tools.electrical import (
 
 try:
     from tools.dxf_reader import get_dxf_summary, read_boundary_polygons, read_circles
+    from tools.dxf_writer import get_block_dims, write_layout_dxf
     HAS_EZDXF = True
 except ImportError:
     HAS_EZDXF = False
@@ -198,6 +200,70 @@ TOOLS = [
                 }
             },
             "required": ["boundary_points", "panel_width_m", "panel_height_m"]
+        }
+    },
+    {
+        "name": "generate_dxf",
+        "description": (
+            "Genera un archivo DXF con los paneles solares implantados directamente como bloques INSERT. "
+            "Output abrible en AutoCAD LT sin necesidad de cargar LISP. "
+            "Modo 1 (recomendado): proveer config_path apuntando a un JSON en projects/. "
+            "Modo 2: proveer todos los parametros individualmente (igual que calculate_layout "
+            "mas source_dxf, output_dxf, block_name, blk_offset_x/y)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "config_path": {
+                    "type": "string",
+                    "description": (
+                        "Ruta al JSON del proyecto (ej: projects/colibri.json). "
+                        "Si se especifica, los demas parametros son ignorados."
+                    )
+                },
+                "source_dxf": {
+                    "type": "string",
+                    "description": "Ruta al DXF fuente (contiene el poligono limite y la definicion del bloque de panel)."
+                },
+                "output_dxf": {
+                    "type": "string",
+                    "description": "Ruta del DXF de salida. Por defecto: output/<project_name>.dxf"
+                },
+                "block_name": {
+                    "type": "string",
+                    "default": "PANEL_615",
+                    "description": "Nombre del bloque de panel en el DXF."
+                },
+                "block_library_dxf": {
+                    "type": "string",
+                    "description": "DXF alternativo para importar el bloque si no existe en source_dxf."
+                },
+                "boundary_points": {
+                    "type": "array",
+                    "description": "Poligono limite [[x,y],...] (alternativa a leer del DXF).",
+                    "items": {"type": "array", "items": {"type": "number"}}
+                },
+                "placements": {
+                    "type": "array",
+                    "description": "Posiciones calculadas por calculate_layout [{group,x,y},...]."
+                },
+                "panel_width_m":  {"type": "number"},
+                "panel_height_m": {"type": "number"},
+                "blk_offset_x":   {"type": "number", "default": 0.0,
+                                   "description": "Offset X insert point desde esquina izq del panel. PANEL_615: 0.567"},
+                "blk_offset_y":   {"type": "number", "default": 0.0,
+                                   "description": "Offset Y insert point desde esquina inf del panel. PANEL_615: 1.151"},
+                "panels_wide":    {"type": "integer", "default": 26},
+                "panels_high":    {"type": "integer", "default": 2},
+                "module_gap_m":   {"type": "number", "default": 0.04},
+                "layer_prefix":   {"type": "string", "default": "GD"},
+                "fallback_placements": {
+                    "type": "array",
+                    "description": "Mesas fallback del modo hibrido (campo 'fallback' de calculate_layout)."
+                },
+                "fallback_wide":  {"type": "integer", "default": 0},
+                "fallback_high":  {"type": "integer", "default": 0}
+            }
         }
     },
     {
@@ -475,6 +541,85 @@ def handle_calculate_layout(args: dict) -> str:
     return json.dumps(result, indent=2)
 
 
+def handle_generate_dxf(args: dict) -> str:
+    if not HAS_EZDXF:
+        return "ERROR: ezdxf no instalado. Ejecuta: pip install ezdxf"
+
+    config_path = args.get("config_path")
+
+    if config_path:
+        # Modo 1: delega en generate.py con JSON de proyecto
+        import sys as _sys
+        _root = Path(__file__).parent.parent
+        if str(_root) not in _sys.path:
+            _sys.path.insert(0, str(_root))
+        from generate import run_project
+        try:
+            out = run_project(config_path)
+            return f"DXF generado: {out}\nAbrir en AutoCAD LT: File → Open → {out}"
+        except Exception as e:
+            return f"ERROR al generar DXF: {e}"
+
+    # Modo 2: parametros individuales (placements ya calculados)
+    if not args.get("source_dxf"):
+        return "ERROR: se requiere 'config_path' o al menos 'source_dxf' + 'placements'."
+    if not args.get("placements"):
+        return "ERROR: se requiere 'placements' (salida de calculate_layout) o 'config_path'."
+
+    source_dxf   = args["source_dxf"]
+    output_dxf   = args.get("output_dxf", "output/layout.dxf")
+    block_name   = args.get("block_name", "PANEL_615")
+    block_lib    = args.get("block_library_dxf")
+    panels_wide  = int(args.get("panels_wide", 26))
+    panels_high  = int(args.get("panels_high", 2))
+    module_gap   = float(args.get("module_gap_m", 0.04))
+    layer_prefix = args.get("layer_prefix", "GD")
+
+    # Dimensiones del panel
+    if args.get("panel_width_m") and args.get("panel_height_m"):
+        panel_w      = float(args["panel_width_m"])
+        panel_h      = float(args["panel_height_m"])
+        blk_offset_x = float(args.get("blk_offset_x", 0.0))
+        blk_offset_y = float(args.get("blk_offset_y", 0.0))
+    else:
+        try:
+            panel_w, panel_h, blk_offset_x, blk_offset_y = get_block_dims(source_dxf, block_name)
+        except Exception as e:
+            return f"ERROR al leer dimensiones del bloque: {e}"
+
+    fallback_pl = args.get("fallback_placements") or []
+    fw = int(args.get("fallback_wide", 0))
+    fh = int(args.get("fallback_high", 0))
+
+    try:
+        out = write_layout_dxf(
+            source_dxf_path=source_dxf,
+            output_dxf_path=output_dxf,
+            placements=args["placements"],
+            block_name=block_name,
+            panels_wide=panels_wide,
+            panels_high=panels_high,
+            panel_w=panel_w,
+            panel_h=panel_h,
+            blk_offset_x=blk_offset_x,
+            blk_offset_y=blk_offset_y,
+            module_gap=module_gap,
+            layer_prefix=layer_prefix,
+            block_library_dxf=block_lib,
+            fallback_placements=fallback_pl if fallback_pl else None,
+            fallback_wide=fw,
+            fallback_high=fh,
+        )
+        from pathlib import Path as _Path
+        size_mb = _Path(out).stat().st_size / 1024 / 1024
+        return (
+            f"DXF generado: {out} ({size_mb:.1f} MB)\n"
+            f"Abrir en AutoCAD LT: File → Open → {out}"
+        )
+    except Exception as e:
+        return f"ERROR al escribir DXF: {e}"
+
+
 def handle_generate_layout_lisp(args: dict) -> str:
     fallback_pl = args.get("fallback_placements") or []
     fallback_w  = int(args.get("fallback_wide", 0))
@@ -560,6 +705,7 @@ def handle_build_nomenclature(args: dict) -> str:
 HANDLERS = {
     "analyze_dxf": handle_analyze_dxf,
     "calculate_layout": handle_calculate_layout,
+    "generate_dxf": handle_generate_dxf,
     "generate_layout_lisp": handle_generate_layout_lisp,
     "generate_labels_lisp": handle_generate_labels_lisp,
     "calculate_metrado": handle_calculate_metrado,

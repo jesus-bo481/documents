@@ -1,0 +1,33 @@
+{
+  "_comment": "Layout Pauxi — 2 GDs x 36 mesas x 26x2, con arboles como obstaculos circulares",
+  "project_name": "PAUXI",
+  "source_dxf": "C:/Users/JesúsAndrésBustilloO/Documents/VS CODE/MCP AUTOCAD/ENTRENAMIENTO PAUXI.DXF",
+  "output_dxf": "output/PAUXI.dxf",
+  "block_name": "PANEL_615",
+
+  "boundary_by": "layer",
+  "boundary_layer": "_004",
+  "boundary_select": "smallest",
+  "boundary_margin_left_m": 8.0,
+
+  "panels_wide": 26,
+  "panels_high": 2,
+  "module_gap_m": 0.04,
+  "gap_horizontal_m": 0.5,
+  "gap_vertical_m": 2.5,
+  "num_groups": 2,
+  "panels_per_group": 36,
+  "group_sep_m": 2.5,
+  "layout_mode": "rows",
+  "fill_top_to_bottom": false,
+  "layer_prefix": "GD",
+
+  "obstacle_tree_block": {
+    "container_block": "Topo Pauxi",
+    "filter_layer_contains": "ARBOL",
+    "entity_type": "INSERT",
+    "insert_offset_x": 4.870,
+    "insert_offset_y": 4.707,
+    "radius": 6.37
+  }
+}

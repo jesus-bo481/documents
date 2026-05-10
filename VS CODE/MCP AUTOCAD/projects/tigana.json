@@ -1,0 +1,38 @@
+{
+  "_comment": "Layout Tigana — 3 GDs x 36 mesas x 26x2 paneles PANEL_615, relleno top-to-bottom",
+  "project_name": "TIGANA",
+  "source_dxf": "C:/Users/JesúsAndrésBustilloO/Documents/GD/Desarrollo/Tigana/Tigana DXF CLD.dxf",
+  "output_dxf": "output/TIGANA.dxf",
+  "block_name": "PANEL_615",
+  "block_library_dxf": "output/PAUXI_LAYOUT.DXF",
+
+  "boundary_by": "points",
+  "boundary_points": [
+    [5004011.7670, 2079710.6318],
+    [5004247.0529, 2079750.4638],
+    [5004266.1525, 2079713.2260],
+    [5004334.5020, 2079778.0893],
+    [5004247.1160, 2079920.3606],
+    [5004218.8482, 2079887.1501],
+    [5004185.9428, 2079821.1684],
+    [5004115.1937, 2079901.3172],
+    [5003971.1472, 2079797.3626]
+  ],
+
+  "panel_width_m": 1.303,
+  "panel_height_m": 2.384,
+  "blk_offset_x": 0.567,
+  "blk_offset_y": 1.151,
+
+  "panels_wide": 26,
+  "panels_high": 2,
+  "module_gap_m": 0.04,
+  "gap_horizontal_m": 1.5,
+  "gap_vertical_m": 3.0,
+  "num_groups": 3,
+  "panels_per_group": 36,
+  "group_sep_m": 8.0,
+  "layout_mode": "columns",
+  "fill_top_to_bottom": true,
+  "layer_prefix": "GD"
+}

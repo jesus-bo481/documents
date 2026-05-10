@@ -1,0 +1,38 @@
+{
+  "_comment": "Layout MOMOTUS — 1 GD x 36 mesas x 26x2. Buffer 15m desde corredor CORONA (azul)",
+  "project_name": "MOMOTUS",
+  "source_dxf": "C:/Users/JesúsAndrésBustilloO/Documents/PRGD MOMOTUS CLD.dxf",
+  "output_dxf": "output/MOMOTUS.dxf",
+  "block_name": "PANEL_615",
+
+  "boundary_by": "layer",
+  "boundary_layer": "0.LINDERO",
+  "boundary_select": "largest",
+  "boundary_color": 3,
+
+  "_nota_obstaculos": "El corredor CORONA (capa 0.CORONA, color=5) se procesa con buffer 15m en _generate_momotus.py por requerir logica especial de expansion de corredor",
+
+  "panel_width_m": 1.303,
+  "panel_height_m": 2.384,
+  "blk_offset_x": 0.567,
+  "blk_offset_y": 1.151,
+
+  "panels_wide": 26,
+  "panels_high": 2,
+  "module_gap_m": 0.04,
+  "gap_horizontal_m": 0.5,
+  "gap_vertical_m": 2.5,
+  "num_groups": 1,
+  "panels_per_group": 36,
+  "group_sep_m": 6.0,
+  "layout_mode": "rows",
+  "fill_top_to_bottom": false,
+  "layer_prefix": "GD",
+
+  "_resultado": {
+    "mesas": 36,
+    "paneles": 1872,
+    "kWp": 1151,
+    "buffer_corona_m": 15
+  }
+}
