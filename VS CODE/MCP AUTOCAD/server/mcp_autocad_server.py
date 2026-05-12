@@ -419,6 +419,90 @@ TOOLS = [
             },
             "required": ["num_inversores", "num_mppt_per_inv", "num_strings_per_mppt"]
         }
+    },
+    {
+        "name": "generate_strings_dxf",
+        "description": (
+            "Dibuja automáticamente los strings DC (conductores positivos y negativos) "
+            "sobre un layout solar DXF. Detecta la cantidad de mesas por fila, dibuja "
+            "LWPOLYLINE conectadas (horizontal + bajante vertical) en colores rojo(+) y "
+            "cian(-), y agrega etiquetas 'Tubo Interflex / Nx6mm2(+) + Nx6mm2(-)' en "
+            "cada cruce entre mesas con el recuento correcto de conductores y tuberías. "
+            "Genera un DXF nuevo sin modificar el layout original."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "source_dxf": {
+                    "type": "string",
+                    "description": "Ruta absoluta al DXF con el layout (salida de generate_dxf)."
+                },
+                "output_dxf": {
+                    "type": "string",
+                    "description": "Ruta del DXF de salida (default: <fuente>_strings.dxf)."
+                },
+                "bajante_side": {
+                    "type": "string",
+                    "enum": ["L", "R"],
+                    "default": "R",
+                    "description": "Lado del bajante/conduit: R=derecha, L=izquierda."
+                },
+                "bajante_dir": {
+                    "type": "string",
+                    "enum": ["down", "up"],
+                    "default": "down",
+                    "description": "Dirección vertical del bajante: down=abajo, up=arriba."
+                },
+                "bajante_depth": {
+                    "type": "number",
+                    "default": 3.0,
+                    "description": "Longitud vertical del bajante en metros (default: 3.0)."
+                },
+                "bajante_offset": {
+                    "type": "number",
+                    "default": 0.05,
+                    "description": "Separacion del primer string al borde interior de la mesa (m, default: 0.05). Strings siguientes a +0.05m cada uno."
+                },
+                "strings_per_mesa": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": "Strings por mesa (0=auto-detectar del nombre del bloque, ej: '24x2'→2)."
+                },
+                "block_name": {
+                    "type": "string",
+                    "description": "Nombre del bloque de mesa (auto si se omite, ej: '24x2')."
+                },
+                "panel_block": {
+                    "type": "string",
+                    "default": "PANEL_615",
+                    "description": "Bloque de panel individual para layouts sin bloque de mesa."
+                },
+                "num_inversores": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": (
+                        "Cantidad total de inversores. Si > 0 (junto con strings_per_inv), "
+                        "se generan etiquetas IxSy en cada mesa. 0 = sin etiquetas."
+                    )
+                },
+                "strings_per_inv": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": "Strings por inversor para el etiquetado IxSy."
+                },
+                "start_from": {
+                    "type": "string",
+                    "enum": ["top", "bottom"],
+                    "default": "top",
+                    "description": (
+                        "Inicio del etiquetado IxSy: "
+                        "'top' = inversor 1 empieza en la fila MAS ALTA; "
+                        "'bottom' = inversor 1 empieza en la fila MAS BAJA."
+                    )
+                }
+            },
+            "required": ["source_dxf"]
+        }
     }
 ]
 
@@ -702,6 +786,34 @@ def handle_build_nomenclature(args: dict) -> str:
     return json.dumps({"tags": tags, "total": len(tags)}, indent=2)
 
 
+def handle_generate_strings_dxf(args: dict) -> str:
+    if not HAS_EZDXF:
+        return "ERROR: ezdxf no instalado. Ejecuta: pip install ezdxf"
+    try:
+        import sys as _sys
+        _root = Path(__file__).parent.parent
+        if str(_root) not in _sys.path:
+            _sys.path.insert(0, str(_root))
+        from generate_strings_dxf import run_generate_strings
+        out = run_generate_strings(
+            source_dxf       = args["source_dxf"],
+            output_dxf       = args.get("output_dxf"),
+            bajante_side     = args.get("bajante_side", "R"),
+            bajante_dir      = args.get("bajante_dir", "down"),
+            bajante_depth    = float(args.get("bajante_depth", 3.0)),
+            bajante_offset   = float(args.get("bajante_offset", 0.05)),
+            strings_per_mesa = int(args.get("strings_per_mesa", 0)),
+            block_name       = args.get("block_name"),
+            panel_block      = args.get("panel_block", "PANEL_615"),
+            num_inversores   = int(args.get("num_inversores", 0)),
+            strings_per_inv  = int(args.get("strings_per_inv", 0)),
+            start_from       = args.get("start_from", "top"),
+        )
+        return f"DXF de strings generado: {out}\nAbrir en AutoCAD LT: File → Open → {out}"
+    except Exception as e:
+        return f"ERROR al generar strings: {e}"
+
+
 HANDLERS = {
     "analyze_dxf": handle_analyze_dxf,
     "calculate_layout": handle_calculate_layout,
@@ -710,6 +822,7 @@ HANDLERS = {
     "generate_labels_lisp": handle_generate_labels_lisp,
     "calculate_metrado": handle_calculate_metrado,
     "build_nomenclature": handle_build_nomenclature,
+    "generate_strings_dxf": handle_generate_strings_dxf,
 }
 
 
