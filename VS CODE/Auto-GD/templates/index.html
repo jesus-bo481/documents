@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto-GD v3.0</title>
+  <style>
+    :root {
+      --sb-bg:     #F0EFEB;
+      --sb-border: #E2E1DC;
+      --bg:        #FFFFFF;
+      --surface:   #FAFAF8;
+      --border:    #E5E5E3;
+      --input-bd:  #D4D4D0;
+      --accent:    #D97706;
+      --acc-h:     #B45309;
+      --acc-light: #FEF3C7;
+      --green:     #059669;
+      --green-bg:  #ECFDF5;
+      --red:       #DC2626;
+      --red-bg:    #FEF2F2;
+      --amber-bg:  #FFFBEB;
+      --text:      #1A1A1A;
+      --text2:     #404040;
+      --muted:     #737373;
+      --light:     #A3A3A3;
+      --hover:     #E8E7E3;
+      --active:    #E0DFD9;
+      --radius:    10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ───── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--sb-bg);
+      border-right: 1px solid var(--sb-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sb-brand {
+      padding: 20px 16px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--sb-border);
+    }
+    .sb-icon {
+      width: 34px; height: 34px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .sb-title   { font-size: 14px; font-weight: 700; color: var(--text); }
+    .sb-sub     { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    .sb-nav {
+      flex: 1;
+      padding: 10px 8px;
+      overflow-y: auto;
+    }
+    .sb-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--light);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 10px 8px 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      color: var(--text2);
+      font-size: 13px;
+      font-family: inherit;
+      transition: background .12s;
+    }
+    .nav-item:hover  { background: var(--hover); }
+    .nav-item.active {
+      background: var(--active);
+      color: var(--text);
+      font-weight: 600;
+    }
+    .nav-item .ni-icon {
+      font-size: 14px;
+      width: 20px; text-align: center;
+      flex-shrink: 0;
+    }
+    .nav-item .ni-label { flex: 1; }
+    .nav-item .ni-badge {
+      font-size: 10px; font-weight: 600;
+      padding: 1px 6px; border-radius: 4px;
+      background: var(--acc-light); color: var(--acc-h);
+      display: none;
+    }
+    .nav-item.has-output .ni-badge { display: inline; }
+
+    .sb-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--sb-border);
+      font-size: 11px;
+      color: var(--light);
+      line-height: 1.5;
+    }
+
+    /* ───── Main ─────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .view { display: none; padding: 32px 40px 48px; max-width: 780px; width: 100%; }
+    .view.active { display: block; }
+
+    .view-hdr { margin-bottom: 28px; }
+    .view-title { font-size: 20px; font-weight: 700; color: var(--text); }
+    .view-desc  { font-size: 13px; color: var(--muted); margin-top: 5px; }
+
+    /* ───── Sections ─────────────────────────────────────── */
+    .section { margin-bottom: 24px; }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ───── Form elements ────────────────────────────────── */
+    .grid-3  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .grid-2  { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-4  { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; }
+    .span-2  { grid-column: span 2; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field > label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--input-bd);
+      border-radius: 8px;
+      background: var(--bg);
+      transition: border-color .15s, box-shadow .15s;
+      overflow: hidden;
+    }
+    .input-row:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(217,119,6,.1);
+    }
+    .input-row input,
+    .input-row select {
+      flex: 1; min-width: 0;
+      border: none; outline: none;
+      background: transparent;
+      padding: 9px 12px;
+      font-size: 13px;
+      color: var(--text);
+      font-family: inherit;
+    }
+    .input-row input[type="number"] { -moz-appearance: textfield; }
+    .input-row input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+
+    .browse-btn {
+      border: none; background: none;
+      padding: 0 11px; cursor: pointer;
+      color: var(--muted); font-size: 13px;
+      border-left: 1px solid var(--border);
+      height: 100%; min-height: 38px;
+      transition: background .12s, color .12s;
+      flex-shrink: 0;
+    }
+    .browse-btn:hover { background: var(--surface); color: var(--text); }
+
+    .temp-row { display: flex; gap: 6px; }
+    .temp-row .input-row { flex: 1; }
+
+    /* ───── AC fields ────────────────────────────────────── */
+    .ac-fields { display: flex; flex-wrap: wrap; gap: 10px; }
+    .ac-field  { display: flex; flex-direction: column; gap: 5px; }
+    .ac-field label { font-size: 11px; font-weight: 500; color: var(--muted); }
+    .ac-field .input-row { width: 88px; }
+
+    /* ───── Select ───────────────────────────────────────── */
+    select {
+      border: 1px solid var(--input-bd);
+      border-radius: 8px;
+      background: var(--bg);
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--text);
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(217,119,6,.1); }
+
+    /* ───── Checkboxes ───────────────────────────────────── */
+    .cb-group { display: flex; gap: 20px; flex-wrap: wrap; }
+    .cb-label {
+      display: flex; align-items: center; gap: 8px;
+      cursor: pointer; font-size: 13px; color: var(--text2);
+      user-select: none;
+    }
+    .cb-label input { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+
+    /* ───── File stack ───────────────────────────────────── */
+    .file-stack { display: flex; flex-direction: column; gap: 12px; }
+
+    /* ───── Tool description ─────────────────────────────── */
+    .tool-row { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    .tool-desc {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 9px 12px;
+      background: var(--surface);
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      flex: 1;
+      min-width: 200px;
+      line-height: 1.5;
+    }
+
+    /* ───── Params panels ────────────────────────────────── */
+    .params { display: none; }
+    .params.on { display: block; }
+
+    /* ───── Buttons ──────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      transition: background .15s, opacity .15s;
+    }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+      padding: 10px 22px;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--acc-h); }
+    .btn-primary:disabled {
+      background: var(--border); color: var(--light);
+      cursor: not-allowed;
+    }
+    .btn-ghost {
+      background: var(--surface); color: var(--text2);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+    }
+    .btn-ghost:hover { background: var(--hover); }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+
+    /* ───── Spinner ──────────────────────────────────────── */
+    .spinner {
+      display: none; width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+    }
+    .spinner.on { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .run-row { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+
+    /* ───── Error banner ─────────────────────────────────── */
+    .err-banner {
+      display: none;
+      background: var(--red-bg);
+      border: 1px solid #FECACA;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 20px;
+      font-size: 12px;
+      color: var(--red);
+      line-height: 1.7;
+    }
+    .err-banner.on { display: block; }
+
+    /* ───── Output panel ─────────────────────────────────── */
+    .output-panel {
+      display: none;
+      margin-top: 28px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-panel.on { display: block; }
+
+    .output-header {
+      display: flex; align-items: center;
+      padding: 11px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+    }
+    .output-status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--light);
+      transition: background .3s;
+      flex-shrink: 0;
+    }
+    .output-status-dot.running { background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+    .output-status-dot.done    { background: var(--green); animation: none; }
+    .output-status-dot.error   { background: var(--red);   animation: none; }
+    @keyframes pulse { 0%,100%{ opacity:1 } 50%{ opacity:.4 } }
+
+    .output-title { font-size: 12px; font-weight: 600; color: var(--text2); flex: 1; }
+    .output-status-text { font-size: 11px; color: var(--muted); }
+    .output-clear {
+      background: none; border: none; cursor: pointer;
+      color: var(--light); font-size: 14px; padding: 2px 4px;
+      border-radius: 4px; line-height: 1;
+      transition: color .12s, background .12s;
+    }
+    .output-clear:hover { color: var(--text2); background: var(--hover); }
+
+    .output-body {
+      padding: 4px 0;
+      max-height: 420px;
+      overflow-y: auto;
+      background: var(--bg);
+    }
+    .output-body::-webkit-scrollbar { width: 5px; }
+    .output-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* Output line types */
+    .ol {
+      padding: 2px 16px;
+      font-size: 12.5px;
+      line-height: 1.65;
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+    }
+    .ol-icon { flex-shrink: 0; font-size: 11px; width: 14px; text-align: center; }
+    .ol-text { flex: 1; font-family: 'Consolas', 'Courier New', monospace; }
+
+    .ol-sect {
+      padding: 12px 16px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ol-sect::before { content: ''; display: block; height: 1px; width: 20px; background: var(--border); }
+    .ol-sect::after  { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .ol-sect:first-child { padding-top: 6px; }
+
+    .ol-ok      { color: var(--green); }
+    .ol-ok .ol-icon::before { content: '✓'; }
+    .ol-err     { color: var(--red); font-weight: 500; }
+    .ol-err .ol-icon::before { content: '✕'; }
+    .ol-warn    { color: #B45309; }
+    .ol-warn .ol-icon::before { content: '⚠'; }
+    .ol-muted   { color: var(--light); }
+    .ol-muted .ol-icon::before { content: ''; }
+    .ol-default { color: var(--text2); }
+    .ol-default .ol-icon::before { content: ''; }
+
+    .ol-done {
+      margin: 8px 12px 6px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: var(--green-bg);
+      border: 1px solid #A7F3D0;
+      color: var(--green);
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ol-done-err {
+      margin: 8px 12px 6px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: var(--red-bg);
+      border: 1px solid #FECACA;
+      color: var(--red);
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    /* ───── Prompts tab ──────────────────────────────────── */
+    .prompt-ta {
+      width: 100%; min-height: 200px; resize: vertical;
+      border: 1px solid var(--input-bd); border-radius: 8px;
+      background: var(--bg); padding: 11px 13px;
+      font-size: 13px; font-family: inherit; color: var(--text);
+      outline: none; line-height: 1.6;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .prompt-ta:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(217,119,6,.1);
+    }
+
+    .tips { list-style: none; display: flex; flex-direction: column; gap: 0; }
+    .tips li {
+      padding: 9px 0;
+      font-size: 13px; color: var(--text2);
+      border-bottom: 1px solid var(--border);
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .tips li:last-child { border-bottom: none; }
+    .tips li::before {
+      content: attr(data-n);
+      font-size: 11px; font-weight: 700;
+      color: var(--light);
+      width: 16px; flex-shrink: 0;
+      padding-top: 1px;
+    }
+
+    /* ───── Scrollbar ────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #D4D4D0; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #A3A3A3; }
+
+    /* ───── Responsive tweak ─────────────────────────────── */
+    @media (max-width: 860px) {
+      .sidebar { width: 56px; }
+      .sb-brand .sb-text, .sb-section-label, .nav-item .ni-label,
+      .nav-item .ni-badge, .sb-footer { display: none; }
+      .sb-brand { justify-content: center; padding: 16px 8px; }
+      .nav-item  { justify-content: center; padding: 10px; }
+      .view { padding: 24px 20px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Sidebar ──────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-icon">☀</div>
+    <div class="sb-text">
+      <div class="sb-title">Auto-GD</div>
+      <div class="sb-sub">v3.0 · Herramientas FV</div>
+    </div>
+  </div>
+
+  <nav class="sb-nav">
+    <div class="sb-section-label">Herramientas</div>
+    <button class="nav-item active" data-view="retie" onclick="showView('retie',this)">
+      <span class="ni-icon">☀</span>
+      <span class="ni-label">Memoria RETIE</span>
+      <span class="ni-badge">✓</span>
+    </button>
+    <button class="nav-item" data-view="dxf" onclick="showView('dxf',this)">
+      <span class="ni-icon">⚡</span>
+      <span class="ni-label">Herramientas DXF</span>
+      <span class="ni-badge">✓</span>
+    </button>
+    <button class="nav-item" data-view="prompts" onclick="showView('prompts',this)">
+      <span class="ni-icon">📝</span>
+      <span class="ni-label">Prompts / Notas</span>
+      <span class="ni-badge">•</span>
+    </button>
+  </nav>
+
+  <div class="sb-footer">
+    Proyecto activo<br>
+    <span id="sb-proyecto" style="color:var(--text2);font-weight:600">—</span>
+  </div>
+</aside>
+
+<!-- ─── Main content ──────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- ═══ View: Memoria RETIE ════════════════════════════════ -->
+  <div id="view-retie" class="view active">
+
+    <div class="view-hdr">
+      <div class="view-title">Memoria RETIE</div>
+      <div class="view-desc">Genera el Excel de cálculo y la memoria Word para el expediente técnico.</div>
+    </div>
+
+    <div id="err-retie" class="err-banner"></div>
+
+    <!-- Datos del proyecto -->
+    <div class="section">
+      <div class="section-title">Datos del proyecto</div>
+      <div class="grid-3">
+        <div class="field span-2">
+          <label>Nombre del proyecto</label>
+          <div class="input-row"><input id="nombre" type="text" value="LA MARTINA 1"
+            oninput="document.getElementById('sb-proyecto').textContent=this.value||'—'"></div>
+        </div>
+        <div class="field">
+          <label>Fecha (YYYY-MM-DD)</label>
+          <div class="input-row"><input id="fecha" type="text" value="2026-03-31"></div>
+        </div>
+        <div class="field">
+          <label>Ciudad</label>
+          <div class="input-row"><input id="ciudad" type="text" value="PARATEBUENO"></div>
+        </div>
+        <div class="field">
+          <label>Departamento</label>
+          <div class="input-row"><input id="depto" type="text" value="CUNDINAMARCA"></div>
+        </div>
+        <div class="field">
+          <label>Temperatura  min / max / prom  (°C)</label>
+          <div class="temp-row">
+            <div class="input-row"><input id="tmin"  type="number" value="18" style="width:50px"></div>
+            <div class="input-row"><input id="tmax"  type="number" value="30" style="width:50px"></div>
+            <div class="input-row"><input id="tprom" type="number" value="28" style="width:50px"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Paneles en serie</label>
+          <div class="input-row"><input id="paneles" type="number" value="24" min="1"></div>
+        </div>
+        <div class="field">
+          <label>Total de módulos</label>
+          <div class="input-row"><input id="modulos" type="number" value="1728" min="1"></div>
+        </div>
+        <div class="field">
+          <label>N° de inversores</label>
+          <div class="input-row">
+            <input id="num_inv" type="number" value="3" min="1" max="10" oninput="rebuildAC()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Archivos de entrada -->
+    <div class="section">
+      <div class="section-title">Archivos de entrada</div>
+      <div class="file-stack">
+        <div class="field">
+          <label>Metrado de cables (.xlsx)</label>
+          <div class="input-row">
+            <input id="metrado" type="text" placeholder="Ruta del archivo…">
+            <button class="browse-btn" onclick="browse('metrado','file',[{name:'Excel',ext:'*.xlsx *.xls'}])">…</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Plantilla de cálculo (.xlsm)</label>
+          <div class="input-row">
+            <input id="excel_base" type="text" placeholder="Ruta del archivo…">
+            <button class="browse-btn" onclick="browse('excel_base','file',[{name:'Excel macro',ext:'*.xlsm'}])">…</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Memoria base (.docx)</label>
+          <div class="input-row">
+            <input id="word_base" type="text" placeholder="Ruta del archivo…">
+            <button class="browse-btn" onclick="browse('word_base','file',[{name:'Word',ext:'*.docx'}])">…</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Carpeta de salida</label>
+          <div class="input-row">
+            <input id="salida" type="text" value="{{ out_dir }}">
+            <button class="browse-btn" onclick="browse('salida','dir')">…</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Longitud cable AC -->
+    <div class="section">
+      <div class="section-title">Longitud cable AC por inversor (m)</div>
+      <div class="ac-fields" id="ac-fields"></div>
+    </div>
+
+    <!-- Opciones y ejecutar -->
+    <div class="section">
+      <div class="section-title">Procesos a ejecutar</div>
+      <div class="cb-group">
+        <label class="cb-label">
+          <input type="checkbox" id="fase1" checked>
+          Fase 1 — Llenar Excel de cálculo
+        </label>
+        <label class="cb-label">
+          <input type="checkbox" id="fase2" checked>
+          Fase 2+3 — Capturar tablas → Word
+        </label>
+      </div>
+      <div class="run-row">
+        <button class="btn btn-primary" id="btn-retie" onclick="runRetie()">
+          Ejecutar pipeline
+        </button>
+        <div class="spinner" id="sp-retie"></div>
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="output-panel" id="out-retie">
+      <div class="output-header">
+        <div class="output-status-dot" id="dot-retie"></div>
+        <span class="output-title">Resultado</span>
+        <span class="output-status-text" id="out-retie-status"></span>
+        <button class="output-clear" onclick="clearOutput('retie')" title="Cerrar">✕</button>
+      </div>
+      <div class="output-body" id="out-retie-body"></div>
+    </div>
+  </div>
+
+
+  <!-- ═══ View: Herramientas DXF ═════════════════════════════ -->
+  <div id="view-dxf" class="view">
+
+    <div class="view-hdr">
+      <div class="view-title">Herramientas DXF</div>
+      <div class="view-desc">Procesa archivos DXF: strings DC, metrado de conductores, corrección de MULTILEADER.</div>
+    </div>
+
+    <div id="err-dxf" class="err-banner"></div>
+
+    <!-- Herramienta -->
+    <div class="section">
+      <div class="section-title">Herramienta</div>
+      <div class="tool-row">
+        <select id="dxf_tool" onchange="onToolChange()">
+          <option value="strings">Generar Strings DC</option>
+          <option value="met_mom">Metrado DC — MOMOTUS</option>
+          <option value="met_iso">Metrado DC — ISIDORI</option>
+          <option value="mleader">Corregir MULTILEADER</option>
+        </select>
+        <div class="tool-desc" id="tool-desc"></div>
+      </div>
+    </div>
+
+    <!-- Archivos -->
+    <div class="section">
+      <div class="section-title">Archivos</div>
+      <div class="file-stack">
+        <div class="field">
+          <label>DXF de entrada</label>
+          <div class="input-row">
+            <input id="dxf_in" type="text" placeholder="Ruta del archivo .dxf…">
+            <button class="browse-btn" onclick="browse('dxf_in','file',[{name:'DXF',ext:'*.dxf'}])">…</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Carpeta de salida</label>
+          <div class="input-row">
+            <input id="dxf_out" type="text" value="{{ mcp_out }}">
+            <button class="browse-btn" onclick="browse('dxf_out','dir')">…</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Params Strings DC -->
+    <div id="p-strings" class="params">
+      <div class="section">
+        <div class="section-title">Parámetros — Strings DC</div>
+        <div class="grid-4" style="margin-bottom:14px">
+          <div class="field">
+            <label>N° inversores</label>
+            <div class="input-row"><input id="str_n_inv" type="number" value="3" min="1" max="20"></div>
+          </div>
+          <div class="field">
+            <label>Strings / inv.</label>
+            <div class="input-row"><input id="str_inv" type="number" value="26" min="1" max="60"></div>
+          </div>
+          <div class="field">
+            <label>String inicial</label>
+            <div class="input-row"><input id="str_start" type="number" value="1" min="1"></div>
+          </div>
+          <div class="field">
+            <label>Bajante (R/L)</label>
+            <div class="input-row">
+              <input id="str_bajante" type="text" value="R" maxlength="1" style="text-transform:uppercase">
+            </div>
+          </div>
+        </div>
+        <div class="field" style="max-width:220px">
+          <label>Nombre del bloque de panel</label>
+          <div class="input-row"><input id="str_panel" type="text" value="PANEL_615"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Params ISIDORI -->
+    <div id="p-iso" class="params">
+      <div class="section">
+        <div class="section-title">Parámetros — Metrado ISIDORI</div>
+        <div class="grid-2" style="max-width:280px">
+          <div class="field">
+            <label>N° inversores</label>
+            <div class="input-row"><input id="iso_n_inv" type="number" value="3" min="1" max="20"></div>
+          </div>
+          <div class="field">
+            <label>MAX strings / inv.</label>
+            <div class="input-row"><input id="iso_max" type="number" value="28" min="1" max="80"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ejecutar -->
+    <div class="run-row" style="margin-top:4px">
+      <button class="btn btn-primary" id="btn-dxf" onclick="runDXF()">
+        Ejecutar herramienta
+      </button>
+      <div class="spinner" id="sp-dxf"></div>
+    </div>
+
+    <!-- Output -->
+    <div class="output-panel" id="out-dxf">
+      <div class="output-header">
+        <div class="output-status-dot" id="dot-dxf"></div>
+        <span class="output-title">Resultado</span>
+        <span class="output-status-text" id="out-dxf-status"></span>
+        <button class="output-clear" onclick="clearOutput('dxf')" title="Cerrar">✕</button>
+      </div>
+      <div class="output-body" id="out-dxf-body"></div>
+    </div>
+  </div>
+
+
+  <!-- ═══ View: Prompts / Notas ═══════════════════════════════ -->
+  <div id="view-prompts" class="view">
+
+    <div class="view-hdr">
+      <div class="view-title">Prompts / Notas</div>
+      <div class="view-desc">Prepara instrucciones para Claude Code o guarda parámetros del proyecto.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Editor</div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--muted);font-weight:500">Plantilla:</label>
+        <select id="tpl_sel" onchange="loadTemplate()" style="font-size:12px;padding:6px 10px">
+          <option value="">Seleccionar…</option>
+          <option value="strings_dc">Strings DC — MOMOTUS</option>
+          <option value="metrado_iso">Metrado ISIDORI</option>
+          <option value="fix_ml">Corregir MULTILEADER</option>
+          <option value="retie">Memoria RETIE</option>
+        </select>
+      </div>
+
+      <textarea id="prompt_ta" class="prompt-ta"
+        placeholder="Escribe instrucciones para Claude Code o carga una plantilla…"></textarea>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:10px">
+        <label class="cb-label">
+          <input type="checkbox" id="incl_prompt">
+          Incluir en el log al ejecutar
+        </label>
+        <button class="btn btn-ghost btn-sm" id="copy-btn" onclick="copyPrompt()">
+          Copiar al portapapeles
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Cómo usar</div>
+      <ul class="tips">
+        <li data-n="1">Escribe o carga una plantilla con la configuración del proceso que necesitas.</li>
+        <li data-n="2">Copia el texto y pégalo en Claude Code para que interprete los parámetros.</li>
+        <li data-n="3">Activa "Incluir en log" para que quede registrado en cada ejecución local.</li>
+        <li data-n="4">Puedes usar este espacio como bitácora de parámetros del proyecto activo.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // ── Templates ──────────────────────────────────────────────────────────────
+  const TPLS = {
+    strings_dc:  "Genera strings DC para el archivo DXF adjunto.\nN inversores: 3 | Strings / inv: 26 | String inicial: 1\nBajante: derecha | Bloque de panel: PANEL_615",
+    metrado_iso: "Ejecuta metrado DC para el archivo DXF adjunto.\nN inversores: 5 | MAX strings / inv: 28\nRellena con cero las filas sin conductor asignado.",
+    fix_ml:      "Corrige el contenido de los MULTILEADER en el archivo DXF.\nPreservar estilo ISO-25 intacto — solo actualizar texto de conductores.",
+    retie:       "Genera la memoria de calculo RETIE para el proyecto.\nProyecto: {NOMBRE} | Ciudad: {CIUDAD}\nTemperatura min/max/prom: {TMIN}/{TMAX}/{TPROM} C",
+  };
+
+  const TOOL_DESC = {
+    strings: "Dibuja LWPOLYLINE + etiquetas IxSy + anotaciones MULTILEADER en el DXF.",
+    met_mom: "Calcula longitud de conductores DC — arquitectura tipo MOMOTUS.",
+    met_iso: "Calcula longitud de conductores DC — arquitectura tipo ISIDORI / horizontal.",
+    mleader: "Actualiza texto de MULTILEADER preservando el estilo ISO-25 del template.",
+  };
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+  function showView(name, btn) {
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+    document.getElementById("view-" + name).classList.add("active");
+    btn.classList.add("active");
+  }
+
+  // ── AC fields ──────────────────────────────────────────────────────────────
+  let acVals = ["0","0","0"];
+
+  function rebuildAC() {
+    const n = Math.max(1, Math.min(10, parseInt(document.getElementById("num_inv").value) || 1));
+    document.querySelectorAll(".ac-inp").forEach((el, i) => { acVals[i] = el.value; });
+    while (acVals.length < n) acVals.push("0");
+    acVals = acVals.slice(0, n);
+    const c = document.getElementById("ac-fields");
+    c.innerHTML = "";
+    for (let i = 0; i < n; i++) {
+      const d = document.createElement("div");
+      d.className = "ac-field";
+      d.innerHTML = `<label>Inversor ${i+1}</label><div class="input-row"><input class="ac-inp" type="number" value="${acVals[i]}" min="0" step="0.1"></div>`;
+      c.appendChild(d);
+    }
+  }
+
+  // ── DXF tool ───────────────────────────────────────────────────────────────
+  function onToolChange() {
+    const t = document.getElementById("dxf_tool").value;
+    document.getElementById("tool-desc").textContent = TOOL_DESC[t] || "";
+    document.getElementById("p-strings").classList.toggle("on", t === "strings");
+    document.getElementById("p-iso").classList.toggle("on", t === "met_iso");
+  }
+
+  // ── Templates ──────────────────────────────────────────────────────────────
+  function loadTemplate() {
+    const k = document.getElementById("tpl_sel").value;
+    if (k && TPLS[k]) document.getElementById("prompt_ta").value = TPLS[k];
+    document.querySelector('[data-view="prompts"]').classList.add("has-output");
+  }
+
+  function copyPrompt() {
+    const text = document.getElementById("prompt_ta").value.trim();
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById("copy-btn");
+      const orig = btn.textContent;
+      btn.textContent = "✓ Copiado";
+      setTimeout(() => btn.textContent = orig, 1800);
+    });
+  }
+
+  // ── Browse ─────────────────────────────────────────────────────────────────
+  async function browse(inputId, mode, types) {
+    try {
+      const r = await fetch("/api/browse", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ mode, types: types || [] }),
+      });
+      const { path } = await r.json();
+      if (path) document.getElementById(inputId).value = path;
+    } catch(e) { console.error("Browse:", e); }
+  }
+
+  // ── Output helpers ─────────────────────────────────────────────────────────
+  function getOut(id) { return document.getElementById("out-" + id + "-body"); }
+
+  function clearOutput(id) {
+    document.getElementById("out-" + id).classList.remove("on");
+    getOut(id).innerHTML = "";
+    setDot(id, "idle");
+    document.getElementById("out-" + id + "-status").textContent = "";
+  }
+
+  function setDot(id, state) {
+    const d = document.getElementById("dot-" + id);
+    d.className = "output-status-dot" + (state !== "idle" ? " " + state : "");
+  }
+
+  function appendLog(bodyId, text, tag) {
+    const body = document.getElementById("out-" + bodyId + "-body");
+    const txt  = (text || "").replace(/^\n/, "");
+
+    // Skip raw separator lines
+    if (/^=+\s*$/.test(txt.trim())) return;
+
+    // Completion line → special card
+    if (tag === "ok" && txt.includes("COMPLETADO")) {
+      const d = document.createElement("div");
+      d.className = "ol-done";
+      d.innerHTML = `<span>✓</span> ${txt.trim()}`;
+      body.appendChild(d);
+      body.scrollTop = body.scrollHeight;
+      return;
+    }
+
+    // Critical error
+    if (tag === "err" && txt.includes("CRÍTICO")) {
+      const d = document.createElement("div");
+      d.className = "ol-done-err";
+      d.textContent = txt.trim();
+      body.appendChild(d);
+      body.scrollTop = body.scrollHeight;
+      return;
+    }
+
+    // Section header (accent tag, non-separator)
+    if (tag === "accent" && txt.trim()) {
+      const d = document.createElement("div");
+      d.className = "ol-sect";
+      d.textContent = txt.trim();
+      body.appendChild(d);
+      body.scrollTop = body.scrollHeight;
+      return;
+    }
+
+    // Regular line
+    if (!txt.trim() && tag !== "ok") return; // skip empty lines silently
+
+    const clsMap = { ok:"ol-ok", err:"ol-err", warning:"ol-warn", muted:"ol-muted" };
+    const cls = clsMap[tag] || "ol-default";
+
+    const d = document.createElement("div");
+    d.className = "ol " + cls;
+    const icon = document.createElement("span");
+    icon.className = "ol-icon";
+    const span = document.createElement("span");
+    span.className = "ol-text";
+    span.textContent = txt.replace(/^\s+/, "");
+    d.appendChild(icon);
+    d.appendChild(span);
+    body.appendChild(d);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function logPrompt(bodyId) {
+    if (!document.getElementById("incl_prompt").checked) return;
+    const txt = document.getElementById("prompt_ta").value.trim();
+    if (!txt) return;
+    appendLog(bodyId, "Notas incluidas", "accent");
+    txt.split("\n").forEach(l => appendLog(bodyId, l, "muted"));
+  }
+
+  function showErr(id, msgs) {
+    const el = document.getElementById("err-" + id);
+    el.innerHTML = msgs.map(m => `<div>• ${m}</div>`).join("");
+    el.classList.add("on");
+    setTimeout(() => el.classList.remove("on"), 7000);
+  }
+
+  // ── SSE runner ─────────────────────────────────────────────────────────────
+  async function runSSE(url, data, viewId, btnId, spId) {
+    const btn  = document.getElementById(btnId);
+    const sp   = document.getElementById(spId);
+    const orig = btn.textContent.trim();
+
+    // Reset output
+    getOut(viewId).innerHTML = "";
+    document.getElementById("out-" + viewId).classList.add("on");
+    document.getElementById("out-" + viewId + "-status").textContent = "Ejecutando…";
+    setDot(viewId, "running");
+    logPrompt(viewId);
+
+    btn.disabled = true;
+    btn.innerHTML = `<span style="opacity:.5">Ejecutando</span>`;
+    sp.classList.add("on");
+
+    let hasError = false;
+
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        showErr(viewId, err.errors || ["Error desconocido"]);
+        document.getElementById("out-" + viewId).classList.remove("on");
+        return;
+      }
+
+      const reader  = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let   buf     = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const msg = JSON.parse(line.slice(6));
+            if (msg.done) break;
+            if (msg.tag === "err") hasError = true;
+            appendLog(viewId, msg.text || "", msg.tag);
+          } catch(_) {}
+        }
+      }
+    } catch(e) {
+      appendLog(viewId, "[ERROR] " + e.message, "err");
+      hasError = true;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+      sp.classList.remove("on");
+      const status = hasError ? "Completado con errores" : "Completado";
+      document.getElementById("out-" + viewId + "-status").textContent = status;
+      setDot(viewId, hasError ? "error" : "done");
+      document.querySelector(`[data-view="${viewId}"]`).classList.add("has-output");
+    }
+  }
+
+  // ── Run RETIE ──────────────────────────────────────────────────────────────
+  function runRetie() {
+    document.querySelectorAll(".ac-inp").forEach((el, i) => { acVals[i] = el.value; });
+    runSSE("/api/run/retie", {
+      nombre:      document.getElementById("nombre").value,
+      ciudad:      document.getElementById("ciudad").value,
+      depto:       document.getElementById("depto").value,
+      fecha:       document.getElementById("fecha").value,
+      tmin:        document.getElementById("tmin").value,
+      tmax:        document.getElementById("tmax").value,
+      tprom:       document.getElementById("tprom").value,
+      paneles:     document.getElementById("paneles").value,
+      modulos:     document.getElementById("modulos").value,
+      ac_inv:      [...document.querySelectorAll(".ac-inp")].map(el => el.value),
+      metrado:     document.getElementById("metrado").value,
+      excel_base:  document.getElementById("excel_base").value,
+      word_base:   document.getElementById("word_base").value,
+      salida:      document.getElementById("salida").value,
+      fase1:       document.getElementById("fase1").checked,
+      fase2:       document.getElementById("fase2").checked,
+      prompt_text: document.getElementById("prompt_ta").value,
+      incl_prompt: document.getElementById("incl_prompt").checked,
+    }, "retie", "btn-retie", "sp-retie");
+  }
+
+  // ── Run DXF ────────────────────────────────────────────────────────────────
+  function runDXF() {
+    const tool = document.getElementById("dxf_tool").value;
+    runSSE("/api/run/dxf", {
+      tool,
+      dxf_in:  document.getElementById("dxf_in").value,
+      out_dir: document.getElementById("dxf_out").value,
+      n_inv:   document.getElementById(tool === "met_iso" ? "iso_n_inv" : "str_n_inv").value,
+      str_inv: document.getElementById("str_inv").value,
+      start:   document.getElementById("str_start").value,
+      max_str: document.getElementById("iso_max").value,
+      bajante: document.getElementById("str_bajante").value,
+      panel:   document.getElementById("str_panel").value,
+    }, "dxf", "btn-dxf", "sp-dxf");
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  document.getElementById("sb-proyecto").textContent =
+    document.getElementById("nombre").value || "—";
+  rebuildAC();
+  onToolChange();
+</script>
+</body>
+</html>
