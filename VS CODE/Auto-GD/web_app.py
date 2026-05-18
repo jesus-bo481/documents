@@ -17,36 +17,48 @@ app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 _DXF_TOOLS = [
-    ("strings",  "Generar Strings DC"),
-    ("met_mom",  "Metrado DC — MOMOTUS"),
+    ("strings",  "Generar Ruta DC"),
+    ("met_mom",  "Metrado DC"),
+    ("ground",   "Diagrama de tierras"),
     ("met_iso",  "Metrado DC — ISIDORI"),
     ("mleader",  "Corregir MULTILEADER"),
 ]
 
 
 # ── File dialog via PowerShell ─────────────────────────────────────────────────
+_PS_UTF8 = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n"
+
 def _browse_ps(mode, file_types=None):
     if mode == "dir":
-        ps = """
+        ps = _PS_UTF8 + """
 Add-Type -AssemblyName System.Windows.Forms
 $d = New-Object System.Windows.Forms.FolderBrowserDialog
 $d.Description = 'Seleccionar carpeta'
+$d.RootFolder = 'MyComputer'
 if ($d.ShowDialog() -eq 'OK') { Write-Output $d.SelectedPath }
 """
     else:
         types = file_types or [{"name": "Todos", "ext": "*.*"}]
         flt = "|".join(f"{t['name']} ({t['ext']})|{t['ext']}" for t in types)
-        ps = f"""
+        ps = _PS_UTF8 + f"""
 Add-Type -AssemblyName System.Windows.Forms
 $d = New-Object System.Windows.Forms.OpenFileDialog
 $d.Filter = '{flt}'
+$d.Multiselect = $false
 if ($d.ShowDialog() -eq 'OK') {{ Write-Output $d.FileName }}
 """
     r = subprocess.run(
-        ["powershell", "-NoProfile", "-Command", ps],
-        capture_output=True, text=True, timeout=60,
+        ["powershell", "-NoProfile", "-STA", "-Command", ps],
+        capture_output=True, timeout=60,  # bytes — decodificamos manualmente
     )
-    return r.stdout.strip()
+    raw = r.stdout.strip()
+    # Quitar BOM UTF-8 si PowerShell lo agregó
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("cp1252", errors="replace")
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -78,7 +90,7 @@ def run_retie():
 @app.route("/api/run/dxf", methods=["POST"])
 def run_dxf():
     data = request.json
-    if not data.get("dxf_in") or not Path(data["dxf_in"]).exists():
+    if not data.get("dxf_in") or not _path_exists(data["dxf_in"]):
         return jsonify({"errors": ["Selecciona un archivo DXF de entrada válido."]}), 400
     return _sse_stream(_worker_dxf, data)
 
@@ -137,10 +149,22 @@ def _validate_retie(data):
         ("Plantilla Excel", "excel_base"),
         ("Memoria Word base", "word_base"),
     ]:
-        val = data.get(key, "")
-        if val and not Path(val).exists():
+        val = (data.get(key) or "").strip()
+        if val and not _path_exists(val):
             errs.append(f"Archivo no encontrado: {nombre}")
     return errs
+
+
+def _path_exists(p: str) -> bool:
+    """Path.exists() tolerante a rutas con caracteres Unicode en Windows."""
+    try:
+        return Path(p).exists()
+    except (OSError, ValueError):
+        try:
+            import os
+            return os.path.exists(p)
+        except Exception:
+            return False
 
 
 # ── Worker RETIE ───────────────────────────────────────────────────────────────
@@ -251,6 +275,24 @@ def _worker_dxf(q, data):
             dump_buf(buf)
             _log(q, f"\n  ✓  →  {output}", "ok")
 
+        elif tool == "ground":
+            _log(q, "=" * 54, "accent")
+            _log(q, "  DIAGRAMA DE TIERRAS — Ground Clamps + interflex", "accent")
+            _log(q, "=" * 54, "accent")
+            from generate_ground_dxf import run_generate_ground
+            output = str(out_dir / f"{dxf_stem}_tierra.dxf")
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                run_generate_ground(
+                    source_dxf   = dxf_in,
+                    output_dxf   = output,
+                    bajante_side = (data.get("bajante") or "R").strip().upper(),
+                    panel_block  = data.get("panel") or "PANEL_615",
+                    bajante_down = float(data.get("baj_down", 3.0)),
+                )
+            dump_buf(buf)
+            _log(q, f"\n  ✓  →  {output}", "ok")
+
         elif tool == "met_mom":
             _log(q, "=" * 54, "accent")
             _log(q, "  METRADO DC — estilo MOMOTUS", "accent")
@@ -306,6 +348,6 @@ def _worker_dxf(q, data):
 if __name__ == "__main__":
     import webbrowser
     url = "http://127.0.0.1:5000"
-    print(f"\n  Auto-GD Web App  →  {url}\n")
+    print(f"\n  Auto-GD Web App  ->  {url}\n")
     threading.Timer(1.2, lambda: webbrowser.open(url)).start()
     app.run(debug=False, threaded=True, host="127.0.0.1", port=5000)
