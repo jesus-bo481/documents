@@ -23,6 +23,7 @@ from generate_strings_dxf import (
     group_by_row,
     detect_layout,
     ensure_layer,
+    get_block_bbox,
     _draw_multileader,
     LAYER_LABELS,
 )
@@ -37,11 +38,81 @@ IFL_SCALE_X          = -20.5827    # escala negativa (espejo)
 IFL_SCALE_Y          = 20.5827
 IFL_ROTATION         = 270.0
 GC_PAIR_HALF         = 0.25        # semidistancia entre el par de GC en cada límite
-STUB_UP              = 1.9         # altura del stub vertical ascendente desde el GC
+STUB_UP              = 1.422       # altura del stub vertical ascendente desde el GC (medido en referencia)
+GC_PANEL_OFFSET      = 0.497       # distancia desde y_bottom del panel superior hasta el GC (medido en referencia)
+TEXT_HEIGHT_GROUND   = 0.5         # altura de texto para etiquetas de tierras (medido en referencia)
+LABEL_UP             = 3.611       # distancia vertical del leader por encima del GC (medido en referencia: 4.108 - 0.497)
 BAJANTE_DOWN_DEFAULT = 3.0         # profundidad del bajante descendente
 CONDUCTORS_PER_TUBE  = 6           # conductores máx por tubo Ø2"
 PANEL_BLOCK_DEFAULT  = "PANEL_615"
 REF_DXF_DEFAULT      = r"C:\Users\JesúsAndrésBustilloO\Documents\MOMOTUS_Tierras CLD.dxf"
+
+# Propiedades DXF del MULTILEADER de referencia (copiadas exactamente de MOMOTUS_Tierras CLD.dxf)
+_REF_ML_ATTRIBS = {
+    "color":                      0,
+    "lineweight":                 0,
+    "leader_type":                1,
+    "leader_line_color":          -1056964608,
+    "leader_lineweight":          -2,
+    "has_landing":                1,
+    "has_dogleg":                 1,
+    "dogleg_length":              0.2,
+    "arrow_head_size":            0.3,
+    "text_left_attachment_type":  1,
+    "text_right_attachment_type": 1,
+    "text_angle_type":            1,
+    "text_alignment_type":        0,
+    "text_color":                 -1056964608,
+    "has_text_frame":             0,
+    "scale":                      1.0,
+    "property_override_flags":    84364930,
+    # text_attachment_point se establece por etiqueta en _draw_multileader (3=top-right para texto
+    # a la izquierda, 1=top-left para texto a la derecha)
+}
+
+
+# ─── Estilo de texto ──────────────────────────────────────────────────────────
+
+def _ensure_romans_style(doc) -> str:
+    """Crea el text style 'romans' si no existe. Devuelve su handle."""
+    name = "romans"
+    if name not in doc.styles:
+        doc.styles.add(name, dxfattribs={"font": "romans.shx", "bigfont": ""})
+    return doc.styles.get(name).dxf.handle
+
+
+def _apply_ref_ml_style(msp, doc):
+    """
+    Post-procesamiento: aplica las propiedades visuales del MULTILEADER de referencia
+    a todos los MULTILEADER generados en la capa TEXTO del diagrama de tierras.
+    """
+    romans_handle = _ensure_romans_style(doc)
+    updated = 0
+    for e in msp:
+        if e.dxftype() != "MULTILEADER" or e.dxf.get("layer", "") != LAYER_LABELS:
+            continue
+        for key, val in _REF_ML_ATTRIBS.items():
+            try:
+                e.dxf.set(key, val)
+            except Exception:
+                pass
+        try:
+            e.dxf.text_style_handle = romans_handle
+        except Exception:
+            pass
+        try:
+            e.context.mtext.style_handle = romans_handle
+        except Exception:
+            pass
+        try:
+            e.context.char_height = TEXT_HEIGHT_GROUND
+            e.context.arrow_head_size = 0.3
+            e.context.landing_gap_size = 0.01875
+        except Exception:
+            pass
+        updated += 1
+    if updated:
+        print(f"  ML estilo  : {updated} etiquetas actualizadas con formato de referencia")
 
 
 # ─── Contenido MLEADER ────────────────────────────────────────────────────────
@@ -106,8 +177,8 @@ def _draw_bracket(msp, x1: float, x2: float, y: float):
         (x1 + 0.001, y),
         (x1 - 0.837, y),
         (x1 - 0.837, y - 0.482),
-        (x2 + 0.771, y - 0.482),
-        (x2 + 0.771, y - 0.004),
+        (x2 + 0.833, y - 0.482),
+        (x2 + 0.833, y - 0.004),
         (x2 + 0.001, y - 0.004),
     ]
     msp.add_lwpolyline(pts, dxfattribs={"layer": LAYER_TIERRA, "color": COLOR_TIERRA})
@@ -117,6 +188,14 @@ def _draw_stub_up(msp, x: float, y: float):
     """Stub vertical ascendente desde un GC hacia el nivel del ducto."""
     msp.add_lwpolyline(
         [(x, y - 0.492), (x, y + STUB_UP)],
+        dxfattribs={"layer": LAYER_TIERRA, "color": COLOR_TIERRA},
+    )
+
+
+def _draw_gc_conn_line(msp, x: float, y: float):
+    """Línea vertical en el GC opuesto al stub: desde el tope hasta el nivel del bracket."""
+    msp.add_lwpolyline(
+        [(x, y + STUB_UP), (x, y - 0.482)],
         dxfattribs={"layer": LAYER_TIERRA, "color": COLOR_TIERRA},
     )
 
@@ -174,10 +253,14 @@ def run_generate_ground(
     strings_pm = info["strings_per_mesa"]
     print(f"  Modo    : {mode}  |  Strings/mesa: {strings_pm}")
 
+    # Altura del panel para calcular y_gc correctamente
+    _bbox = get_block_bbox(doc, panel_block)
+    panel_ph = (_bbox[3] - _bbox[1]) if _bbox else 2.384  # by1 - by0
+
     # Recolectar mesas
     mesas = collect_mesas(doc, panel_block, mode,
                           panel_rows_per_mesa=strings_pm,
-                          skip_layers={"0"})
+                          skip_layers=set())
     if not mesas:
         print("  ERROR: no se encontraron mesas en el DXF.")
         return
@@ -193,7 +276,8 @@ def run_generate_ground(
     for row in rows:
         ordered = sorted(row, key=lambda m: m["x_left"])
         n       = len(ordered)
-        y_row   = sum(m["y_bottom"] for m in ordered) / n
+        # y_gc = borde inferior del panel superior de la mesa + offset medido en referencia
+        y_row   = sum(m["y_top"] - panel_ph + GC_PANEL_OFFSET for m in ordered) / n
 
         if bajante_up == "R":
             # Límites intermedios: de izq (k=1) a derecha (k=n-1)
@@ -204,37 +288,44 @@ def run_generate_ground(
                 x1    = x_mid - GC_PAIR_HALF
                 x2    = x_mid + GC_PAIR_HALF
 
-                n_cond  = k * strings_pm
-                n_tubes = math.ceil(n_cond / CONDUCTORS_PER_TUBE)
+                n_dc_str = k * strings_pm
+                n_tubes  = math.ceil(n_dc_str / CONDUCTORS_PER_TUBE)
+                n_ground = n_tubes
 
                 _place_gc(msp, x1, y_row)
                 _place_gc(msp, x2, y_row)
                 cnt_gc += 2
                 _draw_bracket(msp, x1, x2, y_row)
-                _draw_stub_up(msp, x2, y_row)           # stub en el GC derecho
+                _draw_stub_up(msp, x2, y_row)           # stub en el GC derecho (lado bajante)
+                _draw_gc_conn_line(msp, x1, y_row)      # línea vertical en el GC izquierdo
                 _place_interflex(msp, x_mid, y_row)
                 cnt_ifl += 1
 
-                content = _content_inter(n_cond, n_tubes)
+                content = _content_inter(n_ground, n_tubes)
                 _draw_multileader(
                     msp, doc, content,
-                    x_arrow=x_mid,  y_arrow=y_row - 0.5,
-                    x_elbow=x_mid,  y_elbow=y_row - 5.0,
+                    x_arrow=x_mid,  y_arrow=y_row,
+                    x_elbow=x_mid,  y_elbow=y_row + LABEL_UP,
+                    char_height=TEXT_HEIGHT_GROUND,
+                    text_left=False,
                 )
                 cnt_lbl += 1
 
             # Bajante (mesa más a la derecha)
-            x_baj      = ordered[-1]["x_right"]
-            n_cond_baj  = n * strings_pm
-            n_tubes_baj = math.ceil(n_cond_baj / CONDUCTORS_PER_TUBE)
+            x_baj       = ordered[-1]["x_right"]
+            n_dc_baj    = n * strings_pm
+            n_tubes_baj = math.ceil(n_dc_baj / CONDUCTORS_PER_TUBE)
+            n_ground_baj = n_tubes_baj
 
             _place_gc(msp, x_baj, y_row)
             cnt_gc += 1
             _draw_stub_down(msp, x_baj, y_row, bajante_down)
             _draw_multileader(
-                msp, doc, _content_bajante(n_cond_baj, n_tubes_baj),
-                x_arrow=x_baj,      y_arrow=y_row - 0.5,
-                x_elbow=x_baj + 2.0, y_elbow=y_row - 5.0,
+                msp, doc, _content_bajante(n_ground_baj, n_tubes_baj),
+                x_arrow=x_baj,      y_arrow=y_row,
+                x_elbow=x_baj,      y_elbow=y_row + LABEL_UP,
+                char_height=TEXT_HEIGHT_GROUND,
+                text_left=False,
             )
             cnt_lbl += 1
 
@@ -247,43 +338,61 @@ def run_generate_ground(
                 x1    = x_mid - GC_PAIR_HALF
                 x2    = x_mid + GC_PAIR_HALF
 
-                n_cond  = (n - k) * strings_pm
-                n_tubes = math.ceil(n_cond / CONDUCTORS_PER_TUBE)
+                n_dc_str = (n - k) * strings_pm
+                n_tubes  = math.ceil(n_dc_str / CONDUCTORS_PER_TUBE)
+                n_ground = n_tubes
 
                 _place_gc(msp, x1, y_row)
                 _place_gc(msp, x2, y_row)
                 cnt_gc += 2
                 _draw_bracket(msp, x1, x2, y_row)
-                _draw_stub_up(msp, x1, y_row)           # stub en el GC izquierdo
+                _draw_stub_up(msp, x1, y_row)           # stub en el GC izquierdo (lado bajante)
+                _draw_gc_conn_line(msp, x2, y_row)      # línea vertical en el GC derecho
                 _place_interflex(msp, x_mid, y_row)
                 cnt_ifl += 1
 
-                content = _content_inter(n_cond, n_tubes)
+                content = _content_inter(n_ground, n_tubes)
                 _draw_multileader(
                     msp, doc, content,
-                    x_arrow=x_mid,  y_arrow=y_row - 0.5,
-                    x_elbow=x_mid,  y_elbow=y_row - 5.0,
+                    x_arrow=x_mid,  y_arrow=y_row,
+                    x_elbow=x_mid,  y_elbow=y_row + LABEL_UP,
+                    char_height=TEXT_HEIGHT_GROUND,
+                    text_left=True,
                 )
                 cnt_lbl += 1
 
             # Bajante (mesa más a la izquierda)
-            x_baj      = ordered[0]["x_left"]
-            n_cond_baj  = n * strings_pm
-            n_tubes_baj = math.ceil(n_cond_baj / CONDUCTORS_PER_TUBE)
+            x_baj        = ordered[0]["x_left"]
+            n_dc_baj     = n * strings_pm
+            n_tubes_baj  = math.ceil(n_dc_baj / CONDUCTORS_PER_TUBE)
+            n_ground_baj = n_tubes_baj
 
             _place_gc(msp, x_baj, y_row)
             cnt_gc += 1
             _draw_stub_down(msp, x_baj, y_row, bajante_down)
             _draw_multileader(
-                msp, doc, _content_bajante(n_cond_baj, n_tubes_baj),
-                x_arrow=x_baj,      y_arrow=y_row - 0.5,
-                x_elbow=x_baj - 2.0, y_elbow=y_row - 5.0,
+                msp, doc, _content_bajante(n_ground_baj, n_tubes_baj),
+                x_arrow=x_baj,      y_arrow=y_row,
+                x_elbow=x_baj,      y_elbow=y_row + LABEL_UP,
+                char_height=TEXT_HEIGHT_GROUND,
+                text_left=True,
             )
             cnt_lbl += 1
 
     print(f"\n  GC colocados : {cnt_gc}")
     print(f"  Interflex    : {cnt_ifl}")
     print(f"  Etiquetas    : {cnt_lbl}")
+
+    # Aplicar formato visual de referencia a las etiquetas MULTILEADER
+    _apply_ref_ml_style(msp, doc)
+
+    # Eliminar cables DC y etiquetas IxSy si provienen del DXF fuente
+    _LAYERS_STRIP = {"STRINGS_AUTO", "CONEXION"}
+    to_del = [e for e in msp if e.dxf.get("layer", "") in _LAYERS_STRIP]
+    for e in to_del:
+        msp.delete_entity(e)
+    if to_del:
+        print(f"  Limpieza     : {len(to_del)} entidades strings/IxSy eliminadas")
 
     Path(output_dxf).parent.mkdir(parents=True, exist_ok=True)
     doc.saveas(output_dxf)

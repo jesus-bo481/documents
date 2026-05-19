@@ -282,51 +282,86 @@ def _get_mleader_style(doc) -> str:
 
 def _draw_multileader(msp, doc, content: str,
                       x_arrow: float, y_arrow: float,
-                      x_elbow: float, y_elbow: float):
+                      x_elbow: float, y_elbow: float,
+                      char_height: float = TEXT_HEIGHT,
+                      text_left: bool = False):
     """
-    Dibuja MULTILEADER con leader en L (estilo ISO-25, layer TEXTO).
+    Dibuja MULTILEADER con leader en L (layer TEXTO).
 
     Leader path:
-      flecha (x_arrow, y_arrow)  →  codo (x_elbow, y_elbow)  →  borde izq del texto
-    El texto se inserta 0.5 m a la derecha del codo.
-    Fallback a MTEXT + línea si la API falla.
+      flecha (x_arrow, y_arrow)  →  codo (x_elbow, y_elbow)  →  texto
+    text_left=False → texto a la IZQUIERDA del codo  (bajante R, igual que referencia)
+    text_left=True  → texto a la DERECHA del codo    (bajante L)
+
+    Geometría fijada manualmente después de build() para evitar que el
+    dogleg_length del estilo del documento (8 m en "Standard") desplace
+    last_leader_point muy lejos y genere una línea horizontal gigante.
+    Referencia:  dx(insert − llp) = −0.5806,  dy = +0.25
     """
-    text_insert_x = x_elbow + 0.5
+    INSERT_DX  = 0.58   # distancia horizontal texto ↔ elbow
+    INSERT_DY  = 0.25   # offset vertical mtext.insert ↔ last_leader_point
     style_name = _get_mleader_style(doc)
 
     try:
         from ezdxf.render.mleader import TextAlignment, ConnectionSide
-        from ezdxf.math import Vec2
+        from ezdxf.math import Vec2, Vec3
+
+        # ConnectionSide determina a qué borde del texto conecta el dogleg:
+        #   .right → borde DERECHO del texto (texto queda a la IZQUIERDA del leader)
+        #   .left  → borde IZQUIERDO del texto (texto queda a la DERECHA del leader)
+        conn_side = ConnectionSide.left if text_left else ConnectionSide.right
 
         builder = msp.add_multileader_mtext(style_name)
-        builder.set_content(
-            content,
-            char_height=TEXT_HEIGHT,
-            alignment=TextAlignment.left,
-        )
+        builder.set_content(content, char_height=char_height, alignment=TextAlignment.left)
         builder.add_leader_line(
-            ConnectionSide.left,
+            conn_side,
             [Vec2(x_arrow, y_arrow), Vec2(x_elbow, y_elbow)],
         )
-        builder.build(insert=Vec2(text_insert_x, y_elbow))
-        builder.multileader.dxf.layer = LAYER_LABELS
+        # dummy insert — la geometría real se sobreescribe justo después
+        builder.build(insert=Vec2(x_elbow - 0.5, y_elbow))
+
+        ml  = builder.multileader
+        ml.dxf.layer = LAYER_LABELS
+        ctx = ml.context
+
+        # Fijar geometría exacta independientemente del dogleg_length del estilo.
+        # Referencia:  last_leader_point == elbow  |  dx(insert-llp) = -0.5806  dy = +0.25
+        # ctx.mtext.alignment (código 171 en contexto) controla QUÉ esquina del texto
+        # es el punto de inserción:  3 = top-right → texto crece a la IZQUIERDA
+        #                            1 = top-left  → texto crece a la DERECHA
+        ctx.leaders[0].last_leader_point = Vec3(x_elbow, y_elbow, 0)
+        # dogleg_length del contexto (por líder) controla el largo de la línea horizontal.
+        # El builder hereda 8 m del estilo Standard; lo reducimos al valor de referencia:
+        # INSERT_DX - landing_gap  =  0.58 - 0.01875  ≈  0.5618  (igual que ISO-25)
+        LANDING_GAP = 0.01875
+        ctx.leaders[0].dogleg_length = INSERT_DX - LANDING_GAP
+        ctx.mtext.flow_direction = 5   # igual que referencia (estilo ISO-25)
+        if text_left:   # texto a la DERECHA (bajante L)
+            ctx.mtext.insert    = Vec3(x_elbow + INSERT_DX, y_elbow + INSERT_DY, 0)
+            ctx.mtext.alignment = 1   # top-left: el texto crece hacia la DERECHA desde insert
+            try: ml.dxf.set("text_attachment_point", 1)
+            except Exception: pass
+        else:           # texto a la IZQUIERDA (bajante R, igual que referencia)
+            ctx.mtext.insert    = Vec3(x_elbow - INSERT_DX, y_elbow + INSERT_DY, 0)
+            ctx.mtext.alignment = 3   # top-right: el texto crece hacia la IZQUIERDA desde insert
+            try: ml.dxf.set("text_attachment_point", 3)
+            except Exception: pass
 
     except Exception:
+        text_x = x_elbow + (INSERT_DX if text_left else -INSERT_DX)
         fb = content.replace("\\A1;", "").replace("\\P", "\n")
         msp.add_mtext(fb, dxfattribs={
             "layer":            LAYER_LABELS,
-            "char_height":      TEXT_HEIGHT,
-            "insert":           (text_insert_x, y_elbow, 0),
-            "attachment_point": 1,
+            "char_height":      char_height,
+            "insert":           (text_x, y_elbow, 0),
+            "attachment_point": 1 if text_left else 3,
         })
         msp.add_line(
-            (x_arrow, y_arrow),
-            (x_elbow, y_elbow),
+            (x_arrow, y_arrow), (x_elbow, y_elbow),
             dxfattribs={"layer": LAYER_LABELS, "color": 7},
         )
         msp.add_line(
-            (x_elbow, y_elbow),
-            (text_insert_x, y_elbow),
+            (x_elbow, y_elbow), (text_x, y_elbow),
             dxfattribs={"layer": LAYER_LABELS, "color": 7},
         )
 
