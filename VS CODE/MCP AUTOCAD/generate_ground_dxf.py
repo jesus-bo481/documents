@@ -23,6 +23,7 @@ from generate_strings_dxf import (
     group_by_row,
     detect_layout,
     ensure_layer,
+    ensure_mleader_style,
     get_block_bbox,
     _draw_multileader,
     LAYER_LABELS,
@@ -74,10 +75,11 @@ _REF_ML_ATTRIBS = {
 # ─── Estilo de texto ──────────────────────────────────────────────────────────
 
 def _ensure_romans_style(doc) -> str:
-    """Crea el text style 'romans' si no existe. Devuelve su handle."""
-    name = "romans"
-    if name not in doc.styles:
-        doc.styles.add(name, dxfattribs={"font": "romans.shx", "bigfont": ""})
+    """Crea el text style 'ROMANS' si no existe. Devuelve su handle."""
+    name = "ROMANS"
+    existing = [s.dxf.name for s in doc.styles]
+    if name not in existing:
+        doc.styles.new(name, dxfattribs={"font": "romans.shx"})
     return doc.styles.get(name).dxf.handle
 
 
@@ -270,6 +272,10 @@ def run_generate_ground(
     rows = group_by_row(mesas)
     print(f"  Filas   : {len(rows)}")
 
+    # Garantizar ROMANS y MLEADERSTYLE antes de cualquier _draw_multileader
+    _ensure_romans_style(doc)
+    ensure_mleader_style(doc)
+
     cnt_gc = cnt_ifl = cnt_lbl = 0
     bajante_up = bajante_side.upper()
 
@@ -396,6 +402,7 @@ def run_generate_ground(
 
     Path(output_dxf).parent.mkdir(parents=True, exist_ok=True)
     doc.saveas(output_dxf)
+
     size_mb = Path(output_dxf).stat().st_size / 1_048_576
     print(f"\n  Guardado: {output_dxf} ({size_mb:.1f} MB)")
     print(f"  OK")
