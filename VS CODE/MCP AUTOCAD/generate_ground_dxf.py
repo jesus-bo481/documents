@@ -129,8 +129,34 @@ def _content_bajante(n_cond: int, n_tubes: int) -> str:
 
 # ─── Copia de bloques desde referencia ────────────────────────────────────────
 
+def _copy_entity_geometry(tgt_block, entity):
+    """Recrea una entidad en tgt_block usando solo sus datos geometricos.
+    No usa e.copy() ni Importer — evita contaminar el doc destino con
+    handles/clases del doc fuente (LAYOUT, SUN, etc.) que rompen AutoCAD."""
+    t = entity.dxftype()
+    kw = {"layer": entity.dxf.get("layer", "0")}
+    if entity.dxf.hasattr("color"):
+        kw["color"] = entity.dxf.color
+    if t == "LINE":
+        tgt_block.add_line(entity.dxf.start, entity.dxf.end, dxfattribs=kw)
+    elif t == "CIRCLE":
+        tgt_block.add_circle(entity.dxf.center, entity.dxf.radius, dxfattribs=kw)
+    elif t == "ARC":
+        tgt_block.add_arc(entity.dxf.center, entity.dxf.radius,
+                          entity.dxf.start_angle, entity.dxf.end_angle, dxfattribs=kw)
+    elif t == "LWPOLYLINE":
+        pts = list(entity.get_points())
+        closed = bool(entity.dxf.get("flags", 0) & 1)
+        if closed:
+            kw["closed"] = True
+        tgt_block.add_lwpolyline(pts, dxfattribs=kw)
+
+
 def _copy_blocks_from_ref(ref_path: str, target_doc) -> bool:
-    """Copia GROUND_CLAMP e interflex desde el DXF de referencia."""
+    """Copia GROUND_CLAMP e interflex desde el DXF de referencia.
+    Recrea las entidades de forma nativa — sin e.copy() ni Importer —
+    para no contaminar el doc destino con clases del ref (LAYOUT, SUN, etc.)
+    que hacen que AutoCAD muestre el dibujo vacío al abrir el archivo."""
     needed = [GC_BLOCK, IFL_BLOCK]
     to_copy = [b for b in needed if b not in target_doc.blocks]
     if not to_copy:
@@ -145,10 +171,10 @@ def _copy_blocks_from_ref(ref_path: str, target_doc) -> bool:
                 continue
             tgt = target_doc.blocks.new(bname)
             for e in src:
-                if e.dxftype() in ("ATTDEF", "SEQEND"):
+                if e.dxftype() in ("ATTDEF", "SEQEND", "BLOCK", "ENDBLK"):
                     continue
                 try:
-                    tgt.add_entity(e.copy())
+                    _copy_entity_geometry(tgt, e)
                 except Exception:
                     pass
         copied = [b for b in to_copy if b in target_doc.blocks]
