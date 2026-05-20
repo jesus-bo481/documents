@@ -898,7 +898,9 @@ class AutoGDApp(tk.Tk):
 
             if tool == "strings":
                 self._log("GENERAR RUTA DC — Conductores + IxSy + MULTILEADER", "accent")
-                from generate_strings_dxf import run_generate_strings
+                import generate_strings_dxf as _gsd
+                importlib.reload(_gsd)
+                run_generate_strings = _gsd.run_generate_strings
                 output = str(Path(out_dir) / f"{dxf_stem}_strings.dxf")
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
